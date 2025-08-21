@@ -402,18 +402,12 @@ async function main() {
   try {
     // Check if API key is available (either from env or allow manual override)
     if (!config.apiKey) {
-      console.error("⚠️  No API key found in environment variables");
-      console.error("💡 You can still test the server manually by setting CEREBRAS_API_KEY");
-      console.error("💡 Or use it through Cursor MCP which will provide the key automatically");
-    } else {
-      console.error(`🔑 API key found: ${config.apiKey.substring(0, 8)}...`);
+      console.error("⚠️  No API key found");
+      console.error("📝 Get your API key at: https://cloud.cerebras.ai");
     }
     
     console.error('🚀 Cerebras Code MCP Server starting...');
-    console.error(`📝 Using model: ${config.model}`);
-    console.error(`⚙️  Max tokens: ${config.maxTokens || 'not set (using API default)'}`);
-    console.error(`🌡️  Temperature: ${config.temperature}`);
-    console.error(`📁 Server working directory: ${process.cwd()}`);
+    console.error('📝 Get your API key at: https://cloud.cerebras.ai');
     console.error('⏳ Starting MCP server...');
     
     // Create transport and run server
@@ -421,21 +415,7 @@ async function main() {
     await server.connect(transport);
     
     console.error('✅ MCP Server connected and ready!');
-    console.error(`🔧 Available tools: cerebras-code-write, cerebras-code-diff-edit`);
-    console.error(`📖 Use @cerebras-code-write in Cursor to generate code`);
-    console.error(`📝 Use @cerebras-code-diff-edit in Cursor to modify existing files`);
-    console.error(`💡 Example: @cerebras-code-write prompt: "Create a hello world function", outputFile: "hello.py"`);
-    console.error(`💡 Example: @cerebras-code-diff-edit prompt: "Add error handling", filePath: "hello.py"`);
-    console.error(`💡 Current working directory: ${process.cwd()}`);
-    console.error(`💡 Path handling options:`);
-    console.error(`   • Relative paths (e.g., "hello.py") → written to current server directory`);
-    console.error(`   • Absolute paths (e.g., "/path/to/file.py") → written to exact location`);
-    console.error(`   • Home paths (e.g., "~/Documents/file.py") → expanded from home directory`);
-    console.error(`💡 Examples:`);
-    console.error(`   • "hello.py" → "${path.join(process.cwd(), 'hello.py')}"`);
-    console.error(`   • "/Users/Kevin.Taylor/Documents/GitHub/your-project/hello.py" → exact path`);
-    console.error(`   • "~/Desktop/test.py" → "${path.join(process.env.HOME, 'Desktop/test.py')}"`);
-    console.error(`💡 TIP: Use absolute paths to write files to specific directories!`);
+    console.error('📝 Get your API key at: https://cloud.cerebras.ai');
     
   } catch (error) {
     console.error('❌ Server startup failed:', error.message);

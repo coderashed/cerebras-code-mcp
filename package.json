@@ -1,11 +1,11 @@
 {
   "name": "cerebras-code-mcp",
-  "version": "1.0.0",
-  "description": "MCP server for Cerebras Code API integration with Cursor",
+  "version": "1.0.5",
+  "description": "Model Context Protocol (MCP) server for Cerebras Code API integration with any MCP-compatible client",
   "main": "mcp-server-sdk.js",
   "type": "module",
   "bin": {
-    "cerebras-mcp": "./mcp-server-sdk.js"
+    "cerebras-mcp": "mcp-server-sdk.js"
   },
   "scripts": {
     "test": "node test-mcp-server.js",
@@ -15,12 +15,26 @@
   },
   "keywords": [
     "mcp",
+    "model-context-protocol",
     "cerebras",
-    "cursor",
     "ai",
-    "code-generation"
+    "code-generation",
+    "llm",
+    "artificial-intelligence",
+    "developer-tools",
+    "cursor",
+    "claude",
+    "mcp-server"
   ],
-  "author": "",
+  "author": "Kevin Taylor <kevin.taylor@cerebras.net>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cerebras/cerebras-code-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cerebras/cerebras-code-mcp/issues"
+  },
+  "homepage": "https://github.com/cerebras/cerebras-code-mcp#readme",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
