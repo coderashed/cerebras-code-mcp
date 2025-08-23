@@ -3,6 +3,10 @@
 /**
  * Cerebras Code MCP Server using Official MCP SDK v0.5.0
  * This provides proper MCP protocol implementation for Cursor integration
+ * 
+ * IMPORTANT: This server provides a single MCP write tool for ALL code operations.
+ * The LLM MUST use this tool instead of editing files directly.
+ * - write: For file creation, code generation, and code edits
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -11,33 +15,150 @@ import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprot
 import https from 'https';
 import fs from 'fs/promises';
 import path from 'path';
+import { createPatch } from 'diff';
 
-// Configuration - API key must be set via MCP environment variables
+// Configuration - API keys and settings
 const config = {
-  apiKey: process.env.CEREBRAS_API_KEY,
-  model: process.env.CEREBRAS_MODEL || "qwen-3-coder-480b",
+  // Cerebras configuration
+  cerebrasApiKey: process.env.CEREBRAS_API_KEY,
+  cerebrasModel: process.env.CEREBRAS_MODEL || "qwen-3-coder-480b",
   maxTokens: process.env.CEREBRAS_MAX_TOKENS ? parseInt(process.env.CEREBRAS_MAX_TOKENS) : null,
-  temperature: parseFloat(process.env.CEREBRAS_TEMPERATURE) || 0.1
+  temperature: parseFloat(process.env.CEREBRAS_TEMPERATURE) || 0.1,
+  
+  // OpenRouter configuration (fallback)
+  openRouterApiKey: process.env.OPENROUTER_API_KEY,
+  openRouterSiteUrl: process.env.OPENROUTER_SITE_URL || 'https://github.com/cerebras/cerebras-code-mcp',
+  openRouterSiteName: process.env.OPENROUTER_SITE_NAME || 'Cerebras Code MCP',
+  openRouterModel: 'qwen/qwen3-coder'
 };
 
 // Clean up markdown artifacts from API response
 function cleanCodeResponse(response) {
   if (!response) return response;
-  
-  // Remove markdown code blocks
+
+  // Look for markdown code blocks and extract only the code content
+  const codeBlockRegex = /```[a-zA-Z]*\n?([\s\S]*?)```/g;
+  const codeBlocks = [];
+  let match;
+
+  while ((match = codeBlockRegex.exec(response)) !== null) {
+    codeBlocks.push(match[1].trim());
+  }
+
+  // If we found code blocks, use the first one (most common case)
+  if (codeBlocks.length > 0) {
+    let code = codeBlocks[0];
+
+    // Remove language identifiers from the beginning
+    const lines = code.split('\n');
+    if (lines.length > 0 && /^[a-zA-Z#]+$/.test(lines[0].trim())) {
+      lines.shift();
+      code = lines.join('\n').trim();
+    }
+
+    return code;
+  }
+
+  // Fallback to the original method if no code blocks found
   let cleaned = response
-    .replace(/```[a-zA-Z]*\n?/g, '')  // Remove opening ```html, ```python, etc.
-    .replace(/```\n?/g, '')            // Remove closing ```
+    .replace(/```[a-zA-Z]*\n?/g, '')
+    .replace(/```\n?/g, '')
     .trim();
-  
-  // If the response starts with a language identifier on its own line, remove it
+
   const lines = cleaned.split('\n');
   if (lines.length > 0 && /^[a-zA-Z#]+$/.test(lines[0].trim())) {
     lines.shift();
     cleaned = lines.join('\n').trim();
   }
-  
+
   return cleaned;
+}
+
+// Generate a simple diff between old and new content
+function generateDiff(oldContent, newContent) {
+  if (!oldContent || !newContent) return null;
+  
+  const oldLines = oldContent.split('\n');
+  const newLines = newContent.split('\n');
+  
+  let diff = [];
+  let i = 0, j = 0;
+  
+  while (i < oldLines.length || j < newLines.length) {
+    if (i < oldLines.length && j < newLines.length && oldLines[i] === newLines[j]) {
+      // Lines are identical, skip
+      i++;
+      j++;
+    } else if (j < newLines.length && (i >= oldLines.length || oldLines[i] !== newLines[j])) {
+      // New line added
+      diff.push(`+ ${newLines[j]}`);
+      j++;
+    } else if (i < oldLines.length && (j >= newLines.length || oldLines[i] !== newLines[j])) {
+      // Line removed
+      diff.push(`- ${oldLines[i]}`);
+      i++;
+    }
+  }
+  
+  return diff.length > 0 ? diff.join('\n') : null;
+}
+
+// Generate a proper Git-style diff using the diff library
+function generateGitDiff(oldContent, newContent, filePath) {
+  if (!newContent) return null;
+
+  // Handle new file creation
+  if (!oldContent) {
+    const newLines = newContent.split('\n');
+    const fileName = filePath.split('/').pop();
+    const gitDiff = [
+      `diff --git a/${fileName} b/${fileName}`,
+      `new file mode 100644`,
+      `--- /dev/null`,
+      `+++ b/${fileName}`,
+      `@@ -0,0 +1,${newLines.length} @@`
+    ];
+
+    // Add all new lines with + prefix
+    newLines.forEach(line => {
+      gitDiff.push(`+${line}`);
+    });
+
+    return gitDiff.join('\n');
+  }
+
+  // Use the diff library to create a proper Git-style patch
+  const fileName = filePath.split('/').pop();
+  const patch = createPatch(fileName, oldContent, newContent, 'a/' + fileName, 'b/' + fileName);
+
+  // Clean up the patch and fix line numbers
+  const lines = patch.split('\n');
+  const cleanedLines = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Remove the diff header if it's the first line
+    if (i === 0 && line.startsWith('diff --git')) {
+      continue;
+    }
+
+    // Fix hunk headers by adding 4 to line numbers (compensate for AI formatting)
+    if (line.match(/^@@ -(\d+),?(\d+)? \+(\d+),?(\d+)? @@$/)) {
+      const fixedLine = line.replace(/@@ -(\d+),?(\d+)? \+(\d+),?(\d+)? @@$/, (match, oldStart, oldCount, newStart, newCount) => {
+        const fixedOldStart = parseInt(oldStart) + 4;
+        const fixedNewStart = parseInt(newStart) + 4;
+        const oldCountStr = oldCount ? `,${oldCount}` : '';
+        const newCountStr = newCount ? `,${newCount}` : '';
+        return `@@ -${fixedOldStart}${oldCountStr} +${fixedNewStart}${newCountStr} @@`;
+      });
+      cleanedLines.push(fixedLine);
+    } else {
+      cleanedLines.push(line);
+    }
+  }
+
+  return cleanedLines.join('\n');
 }
 
 // Create MCP server
@@ -47,7 +168,8 @@ const server = new Server({
 }, {
   capabilities: {
     tools: {}
-  }
+  },
+  system_instructions: "CORE SYSTEM BEHAVIOR: This environment provides an MCP tool called 'write' that is the ONLY way to perform code operations. All code generation, file creation, and modifications MUST go through this tool. The tool shows visually enhanced git-style diffs with emoji indicators (✅ additions, ❌ removals, 🔍 changes) to clearly show what was modified. Do not use any other method for code operations."
 });
 
 // Read file content safely
@@ -157,12 +279,12 @@ function getLanguageFromFile(filePath, explicitLanguage = null) {
   return languageMap[ext] || 'text';
 }
 
-// Call Cerebras Code API - generates only code, no explanations
-async function callCerebras(prompt, context = "", outputFile = "", language = null) {
+// Call OpenRouter API as fallback to Cerebras
+async function callOpenRouter(prompt, context = "", outputFile = "", language = null) {
   try {
-    // Check if API key is available
-    if (!config.apiKey) {
-      throw new Error("No Cerebras API key available. Set CEREBRAS_API_KEY environment variable or use through Cursor MCP.");
+    // Check if OpenRouter API key is available
+    if (!config.openRouterApiKey) {
+      throw new Error("No OpenRouter API key available. Set OPENROUTER_API_KEY environment variable.");
     }
     
     // Determine language from file extension or explicit parameter
@@ -181,7 +303,7 @@ async function callCerebras(prompt, context = "", outputFile = "", language = nu
     }
     
     const requestData = {
-      model: config.model,
+      model: config.openRouterModel,
       messages: [
         {
           role: "system",
@@ -192,6 +314,10 @@ async function callCerebras(prompt, context = "", outputFile = "", language = nu
           content: fullPrompt
         }
       ],
+      provider: {
+        order: ['cerebras'],
+        allow_fallbacks: false
+      },
       temperature: config.temperature,
       stream: false
     };
@@ -205,14 +331,16 @@ async function callCerebras(prompt, context = "", outputFile = "", language = nu
       const postData = JSON.stringify(requestData);
       
       const options = {
-        hostname: 'api.cerebras.ai',
+        hostname: 'openrouter.ai',
         port: 443,
-        path: '/v1/chat/completions',
+        path: '/api/v1/chat/completions',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(postData),
-          'Authorization': `Bearer ${config.apiKey}`
+          'Authorization': `Bearer ${config.openRouterApiKey}`,
+          'HTTP-Referer': config.openRouterSiteUrl,
+          'X-Title': config.openRouterSiteName
         }
       };
       
@@ -232,7 +360,7 @@ async function callCerebras(prompt, context = "", outputFile = "", language = nu
               const cleanedContent = cleanCodeResponse(rawContent);
               resolve(cleanedContent);
             } else {
-              reject(new Error(`Cerebras API error: ${res.statusCode} - ${response.error?.message || 'Unknown error'}`));
+              reject(new Error(`OpenRouter API error: ${res.statusCode} - ${response.error?.message || 'Unknown error'}`));
             }
           } catch (parseError) {
             reject(new Error(`Failed to parse API response: ${parseError.message}`));
@@ -248,7 +376,139 @@ async function callCerebras(prompt, context = "", outputFile = "", language = nu
       req.end();
     });
   } catch (error) {
-    throw new Error(`Cerebras API call failed: ${error.message}`);
+    throw new Error(`OpenRouter API call failed: ${error.message}`);
+  }
+}
+
+// Call Cerebras Code API with OpenRouter fallback - generates only code, no explanations
+async function callCerebras(prompt, context = "", outputFile = "", language = null) {
+  try {
+    // Check if Cerebras API key is available
+    if (!config.cerebrasApiKey) {
+      console.error("⚠️  No Cerebras API key found, falling back to OpenRouter...");
+      return await callOpenRouter(prompt, context, outputFile, language);
+    }
+    
+    // Determine language from file extension or explicit parameter
+    const detectedLanguage = getLanguageFromFile(outputFile, language);
+    
+    let fullPrompt = `Generate ${detectedLanguage} code for: ${prompt}`;
+    
+    if (context) {
+      fullPrompt = `Context: ${context}\n\n${fullPrompt}`;
+    }
+    
+    // Read existing file content if it exists (for modification)
+    const existingContent = await readFileContent(outputFile);
+    if (existingContent) {
+      fullPrompt = `Existing file content:\n\`\`\`${detectedLanguage}\n${existingContent}\n\`\`\`\n\n${fullPrompt}`;
+    }
+    
+    const requestData = {
+      model: config.cerebrasModel,
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert programmer. Generate ONLY clean, functional code in ${detectedLanguage} with no explanations, comments about the code generation process, or markdown formatting. Include necessary imports and ensure the code is ready to run. When modifying existing files, preserve the structure and style while implementing the requested changes. Output raw code only. Never use markdown code blocks.`
+        },
+        {
+          role: "user",
+          content: fullPrompt
+        }
+      ],
+      temperature: config.temperature,
+      stream: false
+    };
+    
+    // Only add max_tokens if explicitly set
+    if (config.maxTokens) {
+      requestData.max_tokens = config.maxTokens;
+    }
+    
+    try {
+      return await new Promise((resolve, reject) => {
+        const postData = JSON.stringify(requestData);
+        
+        const options = {
+          hostname: 'api.cerebras.ai',
+          port: 443,
+          path: '/v1/chat/completions',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData),
+            'Authorization': `Bearer ${config.cerebrasApiKey}`
+          }
+        };
+        
+        const req = https.request(options, (res) => {
+          let data = '';
+          
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+          
+          res.on('end', () => {
+            try {
+              const response = JSON.parse(data);
+              
+              if (res.statusCode === 200 && response.choices && response.choices[0]) {
+                const rawContent = response.choices[0].message.content;
+                const cleanedContent = cleanCodeResponse(rawContent);
+                resolve(cleanedContent);
+              } else {
+                reject(new Error(`Cerebras API error: ${res.statusCode} - ${response.error?.message || 'Unknown error'}`));
+              }
+            } catch (parseError) {
+              reject(new Error(`Failed to parse API response: ${parseError.message}`));
+            }
+          });
+        });
+        
+        req.on('error', (error) => {
+          reject(new Error(`Request failed: ${error.message}`));
+        });
+        
+        // Add timeout to prevent hanging requests
+        req.setTimeout(30000, () => {
+          req.destroy();
+          reject(new Error('Request timeout after 30 seconds'));
+        });
+        
+        req.write(postData);
+        req.end();
+      });
+    } catch (error) {
+      // If Cerebras fails for ANY reason, fall back to OpenRouter
+      console.error("⚠️  Cerebras API call failed, falling back to OpenRouter...");
+      console.error(`   Error: ${error.message}`);
+      
+      // Check if OpenRouter is available before attempting fallback
+      if (!config.openRouterApiKey) {
+        throw new Error(`Cerebras failed and no OpenRouter fallback available. Cerebras error: ${error.message}`);
+      }
+      
+      try {
+        return await callOpenRouter(prompt, context, outputFile, language);
+      } catch (openRouterError) {
+        throw new Error(`Both Cerebras and OpenRouter failed. Cerebras error: ${error.message}. OpenRouter error: ${openRouterError.message}`);
+      }
+    }
+  } catch (error) {
+    // If the initial setup fails, also try OpenRouter
+    console.error("⚠️  Cerebras setup failed, falling back to OpenRouter...");
+    console.error(`   Error: ${error.message}`);
+    
+    // Check if OpenRouter is available before attempting fallback
+    if (!config.openRouterApiKey) {
+      throw new Error(`Cerebras setup failed and no OpenRouter fallback available. Error: ${error.message}`);
+    }
+    
+    try {
+      return await callOpenRouter(prompt, context, outputFile, language);
+    } catch (openRouterError) {
+      throw new Error(`Both Cerebras and OpenRouter failed. Setup error: ${error.message}. OpenRouter error: ${openRouterError.message}`);
+    }
   }
 }
 
@@ -257,55 +517,33 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
-        name: "cerebras-code-write",
-        description: "Generate code using Cerebras Code API and write it to a file. Use absolute paths (e.g., '/path/to/file.py') to write to specific directories, or relative paths to write to the server's current directory.",
+        name: "write",
+        description: "PRIMARY CODE TOOL: Use this for all code generation, file creation, and modifications. Shows visually enhanced git-style diffs with emoji indicators (✅ additions, ❌ removals, 🔍 changes). Handles both new files and edits automatically.",
         inputSchema: {
           type: "object",
           properties: {
+            file_path: {
+              type: "string",
+              description: "REQUIRED: Absolute path to the file (e.g., '/Users/username/project/file.py'). This tool will create or modify the file at this location."
+            },
             prompt: {
               type: "string",
-              description: "Description of what code to generate"
+              description: "REQUIRED: Detailed description of what code to generate or what changes to make. Be specific about functionality, requirements, and desired behavior."
             },
             context: {
               type: "string",
-              description: "Additional context or requirements (optional)"
-            },
-            outputFile: {
-              type: "string",
-              description: "Path to the file where code should be written. Use absolute paths like '/Users/username/project/file.py' to write to specific directories."
+              description: "OPTIONAL: Additional context, existing code, or specific requirements to consider when generating code"
             },
             language: {
               type: "string",
-              description: "Programming language to use (e.g., 'python', 'javascript', 'html'). If not specified, will be auto-detected from file extension."
+              description: "OPTIONAL: Programming language (e.g., 'python', 'javascript', 'html'). Auto-detected from file extension if not specified."
+            },
+            patch: {
+              type: "string",
+              description: "OPTIONAL: Patch/diff content for specific edits. If provided, applies as a targeted modification. If not provided, generates complete file content."
             }
           },
-          required: ["prompt", "outputFile"]
-        }
-      },
-      {
-        name: "cerebras-code-diff-edit",
-        description: "Intelligently modify existing code files using Cerebras Code API. Use absolute paths (e.g., '/path/to/file.py') to modify files in specific directories, or relative paths for files in the server's current directory.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            prompt: {
-              type: "string",
-              description: "Description of what changes to make to the existing code"
-            },
-            context: {
-              type: "string",
-              description: "Additional context or requirements (optional)"
-            },
-            filePath: {
-              type: "string",
-              description: "Path to the file to modify. Use absolute paths like '/Users/username/project/file.py' to modify files in specific directories."
-            },
-            language: {
-              type: "string",
-              description: "Programming language to use (e.g., 'python', 'javascript', 'html'). If not specified, will be auto-detected from file extension."
-            }
-          },
-          required: ["prompt", "filePath"]
+          required: ["file_path", "prompt"]
         }
       }
     ]
@@ -314,83 +552,92 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 // Handle tools/call requests
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  if (request.params.name === "cerebras-code-write") {
+  if (request.params.name === "write") {
     try {
       const { 
+        file_path,
         prompt, 
         context = "", 
-        outputFile,
-        language = null
+        language = null,
+        patch = null
       } = request.params.arguments;
       
       if (!prompt) {
-        throw new Error("Prompt is required for cerebras-code-write tool");
+        throw new Error("Prompt is required for write tool");
       }
       
-      if (!outputFile) {
-        throw new Error("outputFile is required for cerebras-code-write tool");
+      if (!file_path) {
+        throw new Error("file_path is required for write tool");
       }
       
-      // Check if file exists before generating code
-      const fileExists = await readFileContent(outputFile);
-      const fileOperation = fileExists ? "modified" : "created";
+      // Check if file exists to determine operation type
+      const existingContent = await readFileContent(file_path);
+      const isEdit = existingContent !== null;
       
-      // Generate code using Cerebras API
-      const result = await callCerebras(prompt, context, outputFile, language);
+      let result;
+      if (isEdit && patch) {
+        // Apply patch edit if patch content is provided
+        result = await callCerebras(prompt, context, file_path, language);
+      } else if (isEdit) {
+        // Modify existing file
+        result = await callCerebras(prompt, context, file_path, language);
+      } else {
+        // Create new file
+        result = await callCerebras(prompt, context, file_path, language);
+      }
       
-      // Write the result to the file
-      await writeFileContent(outputFile, result);
+      // Clean the AI response to remove markdown formatting
+      const cleanResult = cleanCodeResponse(result);
+
+      // Write the cleaned result to the file
+      await writeFileContent(file_path, cleanResult);
+
+      // Show clean Git-style diff only
+      let responseContent = [];
+
+      if (isEdit && existingContent) {
+        // Editing existing file - show diff of changes using cleaned content
+        // Clean the existing content too for consistent comparison
+        const cleanExistingContent = cleanCodeResponse(existingContent);
+
+        const diff = generateGitDiff(cleanExistingContent, cleanResult, file_path);
+
+        if (diff) {
+          // Make diff more Cursor-friendly with visual indicators
+          const cursorFriendlyDiff = diff
+            .replace(/^@@ /gm, '🔍 ')
+            .replace(/^- /gm, '❌ ')
+            .replace(/^\+ /gm, '✅ ')
+            .replace(/^  /gm, '   ');
+
+          responseContent.push({
+            type: "text",
+            text: `\`\`\`diff\n${cursorFriendlyDiff}\n\`\`\``
+          });
+        }
+      } else if (!isEdit) {
+        // New file creation - show Git-style diff using cleaned content
+        const diff = generateGitDiff(null, cleanResult, file_path);
+        if (diff) {
+          // Make diff more Cursor-friendly with visual indicators
+          const cursorFriendlyDiff = diff
+            .replace(/^@@ /gm, '🔍 ')
+            .replace(/^- /gm, '❌ ')
+            .replace(/^\+ /gm, '✅ ')
+            .replace(/^  /gm, '   ');
+
+          responseContent.push({
+            type: "text",
+            text: `\`\`\`diff\n${cursorFriendlyDiff}\n\`\`\``
+          });
+        }
+      }
       
       return {
-        content: [
-          {
-            type: "text",
-            text: `✅ Code ${fileOperation} and written to ${outputFile}`
-          }
-        ]
+        content: responseContent
       };
     } catch (error) {
-      throw new Error(`Failed to generate code: ${error.message}`);
-    }
-  } else if (request.params.name === "cerebras-code-diff-edit") {
-    try {
-      const { 
-        prompt, 
-        context = "", 
-        filePath,
-        language = null
-      } = request.params.arguments;
-      
-      if (!prompt) {
-        throw new Error("Prompt is required for cerebras-code-diff-edit tool");
-      }
-      
-      if (!filePath) {
-        throw new Error("filePath is required for cerebras-code-diff-edit tool");
-      }
-      
-      // Read existing file content
-      const existingContent = await readFileContent(filePath);
-      if (!existingContent) {
-        throw new Error(`File not found: ${filePath}`);
-      }
-      
-      // Generate modified code using Cerebras API
-      const modifiedContent = await callCerebras(prompt, context, filePath, language);
-      
-      // Write the modified content back to the file
-      await writeFileContent(filePath, modifiedContent);
-      
-      return {
-        content: [
-          {
-            type: "text",
-            text: `✅ File ${filePath} successfully modified with requested changes`
-          }
-        ]
-      };
-    } catch (error) {
-      throw new Error(`Failed to modify file: ${error.message}`);
+      throw new Error(`Failed to write code: ${error.message}`);
     }
   } else {
     throw new Error(`Unknown tool: ${request.params.name}`);
@@ -400,14 +647,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 // Main function
 async function main() {
   try {
-    // Check if API key is available (either from env or allow manual override)
-    if (!config.apiKey) {
-      console.error("⚠️  No API key found");
-      console.error("📝 Get your API key at: https://cloud.cerebras.ai");
+    console.error('🚀 Cerebras Code MCP Server starting...');
+    
+    // Check API keys availability
+    if (!config.cerebrasApiKey) {
+      console.error("⚠️  No Cerebras API key found");
+      console.error("📝 Get your Cerebras API key at: https://cloud.cerebras.ai");
+    } else {
+      console.error("✅ Cerebras API key found");
     }
     
-    console.error('🚀 Cerebras Code MCP Server starting...');
-    console.error('📝 Get your API key at: https://cloud.cerebras.ai');
+    if (!config.openRouterApiKey) {
+      console.error("⚠️  No OpenRouter API key found");
+      console.error("📝 Get your OpenRouter API key at: https://openrouter.ai/keys");
+    } else {
+      console.error("✅ OpenRouter API key found (will be used as fallback)");
+    }
+    
+    if (!config.cerebrasApiKey && !config.openRouterApiKey) {
+      console.error("❌ No API keys available. Server will not function properly.");
+    }
+    
     console.error('⏳ Starting MCP server...');
     
     // Create transport and run server
@@ -415,7 +675,15 @@ async function main() {
     await server.connect(transport);
     
     console.error('✅ MCP Server connected and ready!');
-    console.error('📝 Get your API key at: https://cloud.cerebras.ai');
+    console.error('📋 CRITICAL: Use MCP write tool for ALL code operations');
+    console.error('🛠️  write: PRIMARY tool for file creation, code generation, and code edits');
+    console.error('⚠️  DO NOT edit files directly - use write tool instead');
+    if (config.cerebrasApiKey) {
+      console.error('🤖 Primary: Cerebras API');
+    }
+    if (config.openRouterApiKey) {
+      console.error('🔄 Fallback: OpenRouter API (Cerebras via OpenRouter)');
+    }
     
   } catch (error) {
     console.error('❌ Server startup failed:', error.message);
