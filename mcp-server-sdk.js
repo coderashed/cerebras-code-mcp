@@ -16,7 +16,6 @@ import https from 'https';
 import fs from 'fs/promises';
 import path from 'path';
 import { createPatch } from 'diff';
-import readline from 'readline';
 
 // Configuration - API keys and settings
 const config = {
@@ -529,19 +528,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             prompt: {
               type: "string",
-              description: "REQUIRED: Detailed description of what code to generate or what changes to make. Be specific about functionality, requirements, and desired behavior."
+              description: "REQUIRED: A comprehensive plan dump that MUST include: 1) EXACT method signatures and parameters, 2) SPECIFIC database queries/SQL if needed, 3) DETAILED error handling requirements, 4) PRECISE integration points with context files, 5) EXACT constructor parameters and data flow, 6) SPECIFIC return types and data structures. Be extremely detailed - this is your blueprint for implementation."
             },
-            context: {
-              type: "string",
-              description: "OPTIONAL: Additional context, existing code, or specific requirements to consider when generating code"
-            },
-            language: {
-              type: "string",
-              description: "OPTIONAL: Programming language (e.g., 'python', 'javascript', 'html'). Auto-detected from file extension if not specified."
-            },
-            patch: {
-              type: "string",
-              description: "OPTIONAL: Patch/diff content for specific edits. If provided, applies as a targeted modification. If not provided, generates complete file content."
+            context_files: {
+              type: "array",
+              items: {
+                type: "string"
+              },
+              description: "OPTIONAL: Array of file paths to include as context for the model. These files will be read and their content included to help understand the codebase structure and patterns."
             }
           },
           required: ["file_path", "prompt"]
@@ -558,9 +552,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { 
         file_path,
         prompt, 
-        context = "", 
-        language = null,
-        patch = null
+        context_files = []
       } = request.params.arguments;
       
       if (!prompt) {
@@ -576,15 +568,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const isEdit = existingContent !== null;
       
       let result;
-      if (isEdit && patch) {
-        // Apply patch edit if patch content is provided
-        result = await callCerebras(prompt, context, file_path, language);
-      } else if (isEdit) {
+      if (isEdit) {
         // Modify existing file
-        result = await callCerebras(prompt, context, file_path, language);
+        result = await callCerebras(prompt, "", file_path, null, context_files);
       } else {
         // Create new file
-        result = await callCerebras(prompt, context, file_path, language);
+        result = await callCerebras(prompt, "", file_path, null, context_files);
       }
       
       // Clean the AI response to remove markdown formatting
