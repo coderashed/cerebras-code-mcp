@@ -182,17 +182,17 @@ async function readFileContent(filePath) {
     // If it's already absolute, use it as-is
     if (path.isAbsolute(filePath)) {
       absolutePath = filePath;
-      console.error(`📍 Absolute path detected: "${absolutePath}"`);
+      console.error(`  Absolute path detected: "${absolutePath}"`);
     } 
     // If it starts with ~, expand to home directory
     else if (filePath.startsWith('~')) {
       absolutePath = filePath.replace('~', process.env.HOME);
-      console.error(`🏠 Home path expanded: "${filePath}" → "${absolutePath}"`);
+      console.error(`  Home path expanded: "${filePath}" → "${absolutePath}"`);
     }
     // If it's relative, convert to absolute based on current working directory
     else {
       absolutePath = path.join(process.cwd(), filePath);
-      console.error(`🔄 Relative path converted: "${filePath}" → "${absolutePath}"`);
+      console.error(`  Relative path converted: "${filePath}" → "${absolutePath}"`);
     }
     
     const content = await fs.readFile(absolutePath, 'utf-8');
@@ -214,28 +214,28 @@ async function writeFileContent(filePath, content) {
     // If it's already absolute, use it as-is
     if (path.isAbsolute(filePath)) {
       absolutePath = filePath;
-      console.error(`📍 Absolute path detected: "${absolutePath}"`);
+      console.error(`  Absolute path detected: "${absolutePath}"`);
     } 
     // If it starts with ~, expand to home directory
     else if (filePath.startsWith('~')) {
       absolutePath = filePath.replace('~', process.env.HOME);
-      console.error(`🏠 Home path expanded: "${filePath}" → "${absolutePath}"`);
+      console.error(`  Home path expanded: "${filePath}" → "${absolutePath}"`);
     }
     // If it's relative, convert to absolute based on current working directory
     else {
       absolutePath = path.join(process.cwd(), filePath);
-      console.error(`🔄 Relative path converted: "${filePath}" → "${absolutePath}"`);
+      console.error(`  Relative path converted: "${filePath}" → "${absolutePath}"`);
     }
     
     // Ensure directory exists
     const dir = path.dirname(absolutePath);
     await fs.mkdir(dir, { recursive: true });
     
-    await fs.writeFile(absolutePath, content, 'utf-8');
-    console.error(`📝 File written to: ${absolutePath}`);
-    console.error(`📁 Current working directory: ${process.cwd()}`);
-    console.error(`🔗 Original path: ${filePath}`);
-    return true;
+            await fs.writeFile(absolutePath, content, 'utf-8');
+        console.error(`File written to: ${absolutePath}`);
+        console.error(`Current working directory: ${process.cwd()}`);
+        console.error(`Original path: ${filePath}`);
+        return true;
   } catch (error) {
     throw new Error(`Failed to write file ${filePath}: ${error.message}`);
   }
@@ -747,8 +747,8 @@ async function interactiveConfig() {
         console.log('Please restart Cursor to use the new MCP server.');
         
       } catch (error) {
-        console.log(`❌ Failed to setup Cursor MCP: ${error.message}`);
-        console.log('📝 Please check the error and try again.');
+        console.log(`Failed to setup Cursor MCP: ${error.message}`);
+        console.log('Please check the error and try again.');
       }
       
     } else {
@@ -756,7 +756,7 @@ async function interactiveConfig() {
       try {
         const { execSync } = await import('child_process');
         
-        console.log('📝 Executing Claude Code MCP setup...');
+        console.log('Executing Claude Code MCP setup...');
         
         let envVars = '';
         if (cerebrasKey.trim()) {
@@ -771,18 +771,18 @@ async function interactiveConfig() {
         
         execSync(command, { stdio: 'inherit' });
         
-        console.log('✅ Claude Code MCP server configured successfully!');
+        console.log('Claude Code MCP server configured successfully!');
         
       } catch (error) {
-        console.log(`❌ Failed to setup Claude Code MCP: ${error.message}`);
-        console.log('📝 Please run the setup manually using the command shown above.');
+        console.log(`Failed to setup Claude Code MCP: ${error.message}`);
+        console.log('Please run the setup manually using the command shown above.');
       }
     }
 
-    console.log('\n🎉 Configuration setup complete!');
+    console.log('\nConfiguration setup complete!');
     
   } catch (error) {
-    console.error('❌ Configuration setup failed:', error.message);
+    console.error('Configuration setup failed:', error.message);
   } finally {
     rl.close();
   }
@@ -797,46 +797,46 @@ async function main() {
       return;
     }
     
-    console.error('🚀 Cerebras Code MCP Server starting...');
+    console.error('Cerebras Code MCP Server starting...');
     
     // Check API keys availability
     if (!config.cerebrasApiKey) {
-      console.error("⚠️  No Cerebras API key found");
-      console.error("📝 Get your Cerebras API key at: https://cloud.cerebras.ai");
+      console.error("No Cerebras API key found");
+      console.error("Get your Cerebras API key at: https://cloud.cerebras.ai");
     } else {
-      console.error("✅ Cerebras API key found");
+      console.error("Cerebras API key found");
     }
     
     if (!config.openRouterApiKey) {
-      console.error("⚠️  No OpenRouter API key found");
-      console.error("📝 Get your OpenRouter API key at: https://openrouter.ai/keys");
+      console.error("No OpenRouter API key found");
+      console.error("Get your OpenRouter API key at: https://openrouter.ai/keys");
     } else {
-      console.error("✅ OpenRouter API key found (will be used as fallback)");
+      console.error("OpenRouter API key found (will be used as fallback)");
     }
     
     if (!config.cerebrasApiKey && !config.openRouterApiKey) {
-      console.error("❌ No API keys available. Server will not function properly.");
+      console.error("No API keys available. Server will not function properly.");
     }
     
-    console.error('⏳ Starting MCP server...');
+    console.error('Starting MCP server...');
     
     // Create transport and run server
     const transport = new StdioServerTransport();
     await server.connect(transport);
     
-    console.error('✅ MCP Server connected and ready!');
-    console.error('📋 CRITICAL: Use MCP write tool for ALL code operations');
-    console.error('🛠️  write: PRIMARY tool for file creation, code generation, and code edits');
-    console.error('⚠️  DO NOT edit files directly - use write tool instead');
+    console.error('MCP Server connected and ready!');
+    console.error('CRITICAL: Use MCP write tool for ALL code operations');
+    console.error('write: PRIMARY tool for file creation, code generation, and code edits');
+    console.error('DO NOT edit files directly - use write tool instead');
     if (config.cerebrasApiKey) {
-      console.error('🤖 Primary: Cerebras API');
+      console.error('Primary: Cerebras API');
     }
     if (config.openRouterApiKey) {
-      console.error('🔄 Fallback: OpenRouter API (Cerebras via OpenRouter)');
+      console.error('Fallback: OpenRouter API (Cerebras via OpenRouter)');
     }
     
   } catch (error) {
-    console.error('❌ Server startup failed:', error.message);
+    console.error('Server startup failed:', error.message);
     process.exit(1);
   }
 }
