@@ -9,19 +9,18 @@ It will use the Qwen 3 Coder model, and can be embedded in IDEs like Claude Code
 npm install -g cerebras-code-mcp
 ```
 
-## 2. Run the command to test
+## 2. Run the command to setup on Cursor/Claude Code
 ```bash
-cerebras-mcp
+cerebras-mcp --config
 ```
+
+You can also use this link to [install quickly to Cursor](https://cursor.com/en/install-mcp?name=cerebras-code&config=eyJjb21tYW5kIjoiY2VyZWJyYXMtbWNwIiwiZW52Ijp7IkNFUkVCUkFTX0FQSV9LRVkiOiJ5b3VyLWNlcmVicmFzLWtleS1oZXJlIiwiT1BFTlJPVVRFUl9BUElfS0VZIjoieW91ci1vcGVucm91dGVyLWtleS1oZXJlIn19)
 
 ## 3. Get Cerebras API key
 Visit [cloud.cerebras.ai](https://cloud.cerebras.ai) and create an API key
 
-## 4. Add to your editor:
 
-[Install Cerebras MCP Server](cursor://anysphere.cursor-deeplink/mcp/install?name=cerebras-code&config=eyJjb21tYW5kIjoiY2VyZWJyYXMtbWNwICIsImVudiI6eyJDRVJFQlJBU19BUElfS0VZIjoieW91ci1hcGkta2V5LWhlcmUiLCJPUEVOUk9VVEVSX0FQSV9LRVkiOiJ5b3VyLW9wZW5yb3V0ZXItYXBpLWtleS1oZXJlIn19)
-
-## 5. Append to the system prompt that it should use the tool
+## 4. Append tool use instructions to the system prompt
 
 Go to Settings > Rules and Memories > Add a rule (under User Rules)
 

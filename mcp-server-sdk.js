@@ -16,6 +16,7 @@ import https from 'https';
 import fs from 'fs/promises';
 import path from 'path';
 import { createPatch } from 'diff';
+import readline from 'readline';
 
 // Configuration - API keys and settings
 const config = {
@@ -179,7 +180,7 @@ async function readFileContent(filePath) {
     let absolutePath = filePath;
     
     // If it's already absolute, use it as-is
-    if (filePath.startsWith('/')) {
+    if (path.isAbsolute(filePath)) {
       absolutePath = filePath;
       console.error(`📍 Absolute path detected: "${absolutePath}"`);
     } 
@@ -211,7 +212,7 @@ async function writeFileContent(filePath, content) {
     let absolutePath = filePath;
     
     // If it's already absolute, use it as-is
-    if (filePath.startsWith('/')) {
+    if (path.isAbsolute(filePath)) {
       absolutePath = filePath;
       console.error(`📍 Absolute path detected: "${absolutePath}"`);
     } 
@@ -644,9 +645,158 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
+// Interactive configuration setup
+async function interactiveConfig() {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  const question = (query) => new Promise((resolve) => rl.question(query, resolve));
+
+  try {
+    console.log('Cerebras Code MCP Configuration Setup');
+    console.log('=====================================\n');
+
+    // Ask for service
+    const service = await question('Which service are you using?\n1. Cursor\n2. Claude Code\nEnter choice (1 or 2): ');
+    
+    let serviceName = '';
+    if (service === '1') {
+      serviceName = 'Cursor';
+    } else if (service === '2') {
+      serviceName = 'Claude Code';
+    } else {
+      console.log('❌ Invalid choice. Using default: Cursor');
+      serviceName = 'Cursor';
+    }
+    
+    console.log(`Selected service: ${serviceName}\n`);
+
+    // Ask for Cerebras API key
+    console.log('Cerebras API Key Setup');
+    console.log('Get your API key at: https://cloud.cerebras.ai\n');
+    const cerebrasKey = await question('Enter your Cerebras API key (or press Enter to skip): ');
+    
+    if (cerebrasKey.trim()) {
+      console.log('Cerebras API key saved\n');
+    } else {
+      console.log('Skipping Cerebras API key\n');
+    }
+
+    // Ask for OpenRouter API key
+    console.log('OpenRouter API Key Setup (Fallback)');
+    console.log('Get your OpenRouter API key at: https://openrouter.ai/keys\n');
+    const openRouterKey = await question('Enter your OpenRouter API key (or press Enter to skip): ');
+    
+    if (openRouterKey.trim()) {
+      console.log('OpenRouter API key saved\n');
+    } else {
+      console.log('Skipping OpenRouter API key\n');
+    }
+
+    // Prepare for MCP server setup
+    console.log('Preparing MCP server setup...\n');
+    
+    // Execute the actual MCP server setup commands
+    console.log('\nSetting up MCP server...\n');
+    
+    if (serviceName === 'Cursor') {
+      // Execute Cursor MCP setup
+      try {
+        const configPath = path.join(process.env.HOME, '.cursor', 'mcp.json');
+        
+        // Ensure directory exists
+        await fs.mkdir(path.dirname(configPath), { recursive: true });
+        
+        // Read existing config or create new one
+        let existingConfig = {};
+        try {
+          const existingContent = await fs.readFile(configPath, 'utf-8');
+          existingConfig = JSON.parse(existingContent);
+        } catch (error) {
+          // File doesn't exist or is invalid, start with empty config
+          existingConfig = {};
+        }
+        
+        // Ensure mcpServers object exists
+        if (!existingConfig.mcpServers) {
+          existingConfig.mcpServers = {};
+        }
+        
+        // Build environment variables
+        const env = {};
+        if (cerebrasKey.trim()) {
+          env.CEREBRAS_API_KEY = cerebrasKey.trim();
+        }
+        if (openRouterKey.trim()) {
+          env.OPENROUTER_API_KEY = openRouterKey.trim();
+        }
+        
+        // Update or add cerebras-code server
+        existingConfig.mcpServers["cerebras-code"] = {
+          command: "cerebras-mcp",
+          env: env
+        };
+        
+        // Write the updated config
+        await fs.writeFile(configPath, JSON.stringify(existingConfig, null, 2), 'utf-8');
+        
+        console.log('Cursor MCP server configured successfully!');
+        console.log(`Configuration saved to: ${configPath}`);
+        console.log('Please restart Cursor to use the new MCP server.');
+        
+      } catch (error) {
+        console.log(`❌ Failed to setup Cursor MCP: ${error.message}`);
+        console.log('📝 Please check the error and try again.');
+      }
+      
+    } else {
+      // Execute Claude Code MCP setup
+      try {
+        const { execSync } = await import('child_process');
+        
+        console.log('📝 Executing Claude Code MCP setup...');
+        
+        let envVars = '';
+        if (cerebrasKey.trim()) {
+          envVars += ` --env CEREBRAS_API_KEY=${cerebrasKey.trim()}`;
+        }
+        if (openRouterKey.trim()) {
+          envVars += ` --env OPENROUTER_API_KEY=${openRouterKey.trim()}`;
+        }
+        
+        const command = `claude mcp add cerebras-code cerebras-mcp${envVars}`;
+        console.log(`Running: ${command}`);
+        
+        execSync(command, { stdio: 'inherit' });
+        
+        console.log('✅ Claude Code MCP server configured successfully!');
+        
+      } catch (error) {
+        console.log(`❌ Failed to setup Claude Code MCP: ${error.message}`);
+        console.log('📝 Please run the setup manually using the command shown above.');
+      }
+    }
+
+    console.log('\n🎉 Configuration setup complete!');
+    
+  } catch (error) {
+    console.error('❌ Configuration setup failed:', error.message);
+  } finally {
+    rl.close();
+  }
+}
+
 // Main function
 async function main() {
   try {
+    // Check if --config flag is provided
+    if (process.argv.includes('--config')) {
+      await interactiveConfig();
+      return;
+    }
+    
     console.error('🚀 Cerebras Code MCP Server starting...');
     
     // Check API keys availability

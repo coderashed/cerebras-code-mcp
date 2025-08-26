@@ -1,7 +1,7 @@
 {
   "name": "cerebras-code-mcp",
-  "version": "1.0.7",
-  "description": "Model Context Protocol (MCP) server for Cerebras Code API integration with any MCP-compatible client",
+  "version": "1.0.9",
+  "description": "Model Context Protocol (MCP) server for Cerebras Code API integration with any MCP-compatible client. Run 'cerebras-mcp --config' for interactive setup.",
   "main": "mcp-server-sdk.js",
   "type": "module",
   "bin": {
