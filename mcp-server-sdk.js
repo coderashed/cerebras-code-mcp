@@ -16,6 +16,7 @@ import https from 'https';
 import fs from 'fs/promises';
 import path from 'path';
 import { createPatch } from 'diff';
+import readline from 'readline';
 
 // Configuration - API keys and settings
 const config = {
