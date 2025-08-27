@@ -1,8 +1,16 @@
-# Cerebras Code MCP Server
+# Cerebras Code MCP Server v1.1.0
 
 This MCP server is designed for **planning with another model** and **making changes with Cerebras** to maximize speed and intelligence while avoiding API limits. Use your preferred AI for planning and strategy, then leverage Cerebras for high-quality code generation.
 
 It will use the Qwen 3 Coder model, and can be embedded in IDEs like Claude Code, Cursor, etc.
+
+## ✨ New in v1.1.0
+
+- **Context Files Support**: Include multiple files as context for better code generation
+- **Smart Deduplication**: Automatically filters output file from context to avoid duplication
+- **Improved Tool Naming**: Renamed to `cerebras_write` to avoid conflicts with native tools
+- **Enhanced Visual Diffs**: Git-style diffs with emoji indicators (✅ additions, ❌ removals, 🔍 changes)
+- **Better Error Handling**: Gracefully handles missing context files and API failures
 
 ## 1. Install
 ```bash
@@ -20,14 +28,17 @@ You can also use this link to [install quickly to Cursor](https://cursor.com/en/
 Visit [cloud.cerebras.ai](https://cloud.cerebras.ai) and create an API key
 
 
-## 4. Append tool use instructions to the system prompt
+## 4. Usage in Cursor
 
-Go to Settings > Rules and Memories > Add a rule (under User Rules)
+The MCP tool will appear as `cerebras_write` in your tool list. It supports:
 
-Paste the following text:
+- **Natural language prompts**: Just describe what you want in plain English
+- **Context files**: Include multiple files as context for better code understanding
+- **Visual diffs**: See changes with emoji-enhanced Git-style diffs
 
+Example usage:
 ```
-CRITICAL: You MUST use the MCP `write` tool for ALL code operations. Do NOT edit files directly. The write tool handles file creation, code generation, and modifications automatically.
+Use the cerebras_write tool to create a REST API with Express.js that handles user authentication
 ```
 
 ## 6. Add OpenRouter as a backup in case you hit your Cerebras rate limits
