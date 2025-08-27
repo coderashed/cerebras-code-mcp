@@ -1,4 +1,4 @@
-# Cerebras Code MCP Server v1.1.3
+# Cerebras Code MCP Server v1.1.4
 
 This MCP server is designed for **planning with another model** and **making changes with Cerebras** to maximize speed and intelligence while avoiding API limits. Use your preferred AI for planning and strategy, then leverage Cerebras for high-quality code generation.
 

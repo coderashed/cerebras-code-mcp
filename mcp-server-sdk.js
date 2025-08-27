@@ -721,6 +721,22 @@ async function interactiveConfig() {
 
   const question = (query) => new Promise((resolve) => rl.question(query, resolve));
 
+  const questionPassword = (query) => new Promise((resolve) => {
+    const originalWrite = rl._writeToOutput;
+    
+    rl._writeToOutput = function _writeToOutput(stringToWrite) {
+      if (stringToWrite === query) {
+        originalWrite.apply(rl, arguments);
+      }
+    };
+
+    rl.question(query, (password) => {
+      rl._writeToOutput = originalWrite;
+      rl.output.write('\n');
+      resolve(password);
+    });
+  });
+
   try {
     console.log('Cerebras Code MCP Configuration Setup');
     console.log('=====================================\n');
@@ -743,7 +759,7 @@ async function interactiveConfig() {
     // Ask for Cerebras API key
     console.log('Cerebras API Key Setup');
     console.log('Get your API key at: https://cloud.cerebras.ai\n');
-    const cerebrasKey = await question('Enter your Cerebras API key (or press Enter to skip): ');
+    const cerebrasKey = await questionPassword('Enter your Cerebras API key (or press Enter to skip): ');
     
     if (cerebrasKey.trim()) {
       console.log('Cerebras API key saved\n');
@@ -754,7 +770,7 @@ async function interactiveConfig() {
     // Ask for OpenRouter API key
     console.log('OpenRouter API Key Setup (Fallback)');
     console.log('Get your OpenRouter API key at: https://openrouter.ai/keys\n');
-    const openRouterKey = await question('Enter your OpenRouter API key (or press Enter to skip): ');
+    const openRouterKey = await questionPassword('Enter your OpenRouter API key (or press Enter to skip): ');
     
     if (openRouterKey.trim()) {
       console.log('OpenRouter API key saved\n');
@@ -837,6 +853,16 @@ async function interactiveConfig() {
         
         console.log('Executing Claude Code MCP setup...');
         
+        // Uninstall existing server to ensure clean installation
+        try {
+          console.log('Attempting to uninstall existing cerebras-code server...');
+          execSync('claude mcp remove cerebras-code', { stdio: 'inherit' });
+          console.log('Uninstalled existing server.');
+        } catch (error) {
+          // Ignore if it fails (e.g., not installed)
+          console.log('No existing server to uninstall or uninstall failed, continuing...');
+        }
+
         let envVars = '';
         if (cerebrasKey.trim()) {
           envVars += ` --env CEREBRAS_API_KEY=${cerebrasKey.trim()}`;
@@ -850,7 +876,15 @@ async function interactiveConfig() {
         
         execSync(command, { stdio: 'inherit' });
         
-        console.log('✅ Claude Code MCP server configured successfully!');
+        // Verify installation
+        console.log('Verifying installation...');
+        const listOutput = execSync('claude mcp list').toString();
+        if (listOutput.includes('cerebras-code')) {
+            console.log('✅ Claude Code MCP server configured successfully!');
+        } else {
+            console.log('❌ Verification failed: cerebras-code not found in claude mcp list.');
+            throw new Error('Installation verification failed.');
+        }
 
         // Automatically create or append to the global CLAUDE.md rule file
         try {
