@@ -172,7 +172,34 @@ const server = new Server({
   capabilities: {
     tools: {}
   },
-  system_instructions: "CORE SYSTEM BEHAVIOR: This environment provides an MCP tool called 'write' that is the ONLY way to perform code operations. All code generation, file creation, and modifications MUST go through this tool. The tool shows visually enhanced git-style diffs with emoji indicators (✅ additions, ❌ removals, 🔍 changes) to clearly show what was modified. Do not use any other method for code operations."
+  system_instructions: `🚨 CRITICAL AUTO-INSTRUCTION SYSTEM 🚨
+
+This environment provides an MCP tool called 'write' that is the ONLY way to perform code operations.
+
+🔒 MANDATORY USAGE RULES:
+- ALL code generation MUST use the 'write' tool
+- ALL file creation MUST use the 'write' tool  
+- ALL code modifications MUST use the 'write' tool
+- NEVER edit files directly - use 'write' tool instead
+
+🎯 WHEN TO USE 'write' TOOL:
+- Creating new files: Use 'write' with file_path and prompt
+- Editing existing files: Use 'write' with file_path and prompt  
+- Code generation: Use 'write' with detailed prompt and optional context_files
+- Any code changes: Use 'write' tool - it's the ONLY way!
+
+✨ TOOL FEATURES:
+- Shows visually enhanced git-style diffs with emoji indicators (✅ additions, ❌ removals, 🔍 changes)
+- Automatically handles both new files and edits
+- Supports context_files for better code understanding
+- Provides comprehensive error handling and validation
+
+🚫 FORBIDDEN:
+- Direct file editing
+- Manual code insertion
+- File system manipulation outside the tool
+
+The 'write' tool is your ONLY interface for code operations. Use it automatically for any code-related task.`
 });
 
 // Read file content safely
@@ -574,7 +601,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
               {
           name: "write",
-          description: "PRIMARY CODE TOOL: Use this for all code generation, file creation, and modifications. Shows visually enhanced git-style diffs with emoji indicators (✅ additions, ❌ removals, 🔍 changes). Handles both new files and edits automatically.",
+          description: "🚨 MANDATORY CODE TOOL - USE THIS FOR ALL CODE OPERATIONS! 🚨\n\nThis is your ONLY interface for code generation, file creation, and modifications. Never edit files directly!\n\n✨ FEATURES:\n- Creates new files automatically\n- Modifies existing files with smart diffs\n- Shows visually enhanced git-style diffs with emoji indicators (✅ additions, ❌ removals, 🔍 changes)\n- Supports context_files for better code understanding\n- Handles all programming languages\n- Provides comprehensive error handling\n\n🎯 USE CASES:\n- Writing new code: Use with file_path + detailed prompt\n- Editing code: Use with file_path + modification prompt\n- Code generation: Use with file_path + generation prompt + optional context_files\n\n⚠️  REMEMBER: This tool is MANDATORY for ALL code operations!",
         inputSchema: {
           type: "object",
           properties: {
@@ -864,10 +891,10 @@ async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
     
-    console.error('MCP Server connected and ready!');
-    console.error('CRITICAL: Use MCP write tool for ALL code operations');
-    console.error('write: PRIMARY tool for file creation, code generation, and code edits');
-    console.error('DO NOT edit files directly - use write tool instead');
+    console.error('🚀 MCP Server connected and ready with AUTO-INSTRUCTION SYSTEM!');
+    console.error('🚨 CRITICAL: Enhanced system_instructions will automatically enforce MCP tool usage');
+    console.error('🔧 write: MANDATORY tool for ALL code operations (file creation, generation, edits)');
+    console.error('✨ Models will automatically use write tool - no user instruction needed!');
     if (config.cerebrasApiKey) {
       console.error('Primary: Cerebras API');
     }
