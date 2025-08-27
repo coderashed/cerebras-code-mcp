@@ -27,4 +27,4 @@ The 'write' tool provides:
 
 ENFORCEMENT: This is a HARD REQUIREMENT. There are no exceptions to this rule.
 
-DEFAULT TOOL: mcp_cerebras-code_write
+DEFAULT TOOL: write
