@@ -8,7 +8,7 @@ It will use the Qwen 3 Coder model, and can be embedded in IDEs like Claude Code
 
 - **Context Files Support**: Include multiple files as context for better code generation
 - **Smart Deduplication**: Automatically filters output file from context to avoid duplication
-- **Improved Tool Naming**: Renamed to `cerebras_write` to avoid conflicts with native tools
+- **Enhanced Tool**: Improved `write` tool with context files support
 - **Enhanced Visual Diffs**: Git-style diffs with emoji indicators (✅ additions, ❌ removals, 🔍 changes)
 - **Better Error Handling**: Gracefully handles missing context files and API failures
 
@@ -30,7 +30,7 @@ Visit [cloud.cerebras.ai](https://cloud.cerebras.ai) and create an API key
 
 ## 4. Usage in Cursor
 
-The MCP tool will appear as `cerebras_write` in your tool list. It supports:
+The MCP tool will appear as `write` in your tool list. It supports:
 
 - **Natural language prompts**: Just describe what you want in plain English
 - **Context files**: Include multiple files as context for better code understanding
@@ -38,7 +38,7 @@ The MCP tool will appear as `cerebras_write` in your tool list. It supports:
 
 Example usage:
 ```
-Use the cerebras_write tool to create a REST API with Express.js that handles user authentication
+Use the write tool to create a REST API with Express.js that handles user authentication
 ```
 
 ## 6. Add OpenRouter as a backup in case you hit your Cerebras rate limits
