@@ -322,21 +322,30 @@ async function callOpenRouter(prompt, context = "", outputFile = "", language = 
     
     let fullPrompt = `Generate ${detectedLanguage} code for: ${prompt}`;
     
-    // Add context files if provided
+    // Add context files if provided (excluding the output file itself)
     if (contextFiles && contextFiles.length > 0) {
-      let contextContent = "Context Files:\n";
-      for (const contextFile of contextFiles) {
-        try {
-          const content = await readFileContent(contextFile);
-          if (content) {
-            const contextLang = getLanguageFromFile(contextFile);
-            contextContent += `\nFile: ${contextFile}\n\`\`\`${contextLang}\n${content}\n\`\`\`\n`;
+      // Filter out the output file from context files to avoid duplication
+      const filteredContextFiles = contextFiles.filter(file => {
+        const resolvedContext = path.resolve(file);
+        const resolvedOutput = path.resolve(outputFile);
+        return resolvedContext !== resolvedOutput;
+      });
+      
+      if (filteredContextFiles.length > 0) {
+        let contextContent = "Context Files:\n";
+        for (const contextFile of filteredContextFiles) {
+          try {
+            const content = await readFileContent(contextFile);
+            if (content) {
+              const contextLang = getLanguageFromFile(contextFile);
+              contextContent += `\nFile: ${contextFile}\n\`\`\`${contextLang}\n${content}\n\`\`\`\n`;
+            }
+          } catch (error) {
+            console.error(`Warning: Could not read context file ${contextFile}: ${error.message}`);
           }
-        } catch (error) {
-          console.error(`Warning: Could not read context file ${contextFile}: ${error.message}`);
         }
+        fullPrompt = contextContent + "\n" + fullPrompt;
       }
-      fullPrompt = contextContent + "\n" + fullPrompt;
     }
     
     if (context) {
@@ -441,21 +450,30 @@ async function callCerebras(prompt, context = "", outputFile = "", language = nu
     
     let fullPrompt = `Generate ${detectedLanguage} code for: ${prompt}`;
     
-    // Add context files if provided
+    // Add context files if provided (excluding the output file itself)
     if (contextFiles && contextFiles.length > 0) {
-      let contextContent = "Context Files:\n";
-      for (const contextFile of contextFiles) {
-        try {
-          const content = await readFileContent(contextFile);
-          if (content) {
-            const contextLang = getLanguageFromFile(contextFile);
-            contextContent += `\nFile: ${contextFile}\n\`\`\`${contextLang}\n${content}\n\`\`\`\n`;
+      // Filter out the output file from context files to avoid duplication
+      const filteredContextFiles = contextFiles.filter(file => {
+        const resolvedContext = path.resolve(file);
+        const resolvedOutput = path.resolve(outputFile);
+        return resolvedContext !== resolvedOutput;
+      });
+      
+      if (filteredContextFiles.length > 0) {
+        let contextContent = "Context Files:\n";
+        for (const contextFile of filteredContextFiles) {
+          try {
+            const content = await readFileContent(contextFile);
+            if (content) {
+              const contextLang = getLanguageFromFile(contextFile);
+              contextContent += `\nFile: ${contextFile}\n\`\`\`${contextLang}\n${content}\n\`\`\`\n`;
+            }
+          } catch (error) {
+            console.error(`Warning: Could not read context file ${contextFile}: ${error.message}`);
           }
-        } catch (error) {
-          console.error(`Warning: Could not read context file ${contextFile}: ${error.message}`);
         }
+        fullPrompt = contextContent + "\n" + fullPrompt;
       }
-      fullPrompt = contextContent + "\n" + fullPrompt;
     }
     
     if (context) {
