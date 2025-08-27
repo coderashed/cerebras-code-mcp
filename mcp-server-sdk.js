@@ -33,6 +33,64 @@ const config = {
   openRouterModel: 'qwen/qwen3-coder'
 };
 
+// Simple ANSI syntax highlighting
+function syntaxHighlight(code, language) {
+  // ANSI color codes
+  const colors = {
+    keyword: '\x1b[35m',     // Magenta
+    string: '\x1b[33m',      // Yellow  
+    comment: '\x1b[90m',     // Gray
+    number: '\x1b[36m',      // Cyan
+    function: '\x1b[34m',    // Blue
+    reset: '\x1b[0m'
+  };
+
+  // Language-specific keywords
+  const keywords = {
+    javascript: ['const', 'let', 'var', 'function', 'if', 'else', 'for', 'while', 'return', 'await', 'async', 'import', 'export', 'from', 'class', 'extends', 'new', 'this', 'try', 'catch', 'throw', 'typeof', 'instanceof', 'true', 'false', 'null', 'undefined'],
+    python: ['def', 'class', 'if', 'elif', 'else', 'for', 'while', 'return', 'import', 'from', 'as', 'try', 'except', 'finally', 'with', 'lambda', 'yield', 'True', 'False', 'None', 'and', 'or', 'not', 'in', 'is'],
+    html: ['DOCTYPE', 'html', 'head', 'body', 'div', 'span', 'p', 'a', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'form', 'input', 'button', 'script', 'style', 'link', 'meta'],
+    css: ['color', 'background', 'border', 'margin', 'padding', 'font', 'width', 'height', 'display', 'position', 'top', 'left', 'right', 'bottom', 'flex', 'grid', 'transform', 'transition', 'animation']
+  };
+
+  const languageKeywords = keywords[language] || [];
+  
+  // Apply syntax highlighting line by line
+  return code.split('\n').map(line => {
+    let highlighted = line;
+    
+    // Highlight comments first (to avoid highlighting keywords inside comments)
+    if (language === 'javascript' || language === 'css') {
+      highlighted = highlighted.replace(/(\/\/.*$|\/\*.*?\*\/)/g, `${colors.comment}$1${colors.reset}`);
+    } else if (language === 'python') {
+      highlighted = highlighted.replace(/(#.*$)/g, `${colors.comment}$1${colors.reset}`);
+    } else if (language === 'html') {
+      highlighted = highlighted.replace(/(<!--.*?-->)/g, `${colors.comment}$1${colors.reset}`);
+    }
+    
+    // Highlight strings (simple approach - doesn't handle escapes perfectly)
+    highlighted = highlighted.replace(/(['"])(?:(?=(\\?))\2.)*?\1/g, (match) => {
+      return `${colors.string}${match}${colors.reset}`;
+    });
+    
+    // Highlight numbers
+    highlighted = highlighted.replace(/\b(\d+\.?\d*)\b/g, `${colors.number}$1${colors.reset}`);
+    
+    // Highlight keywords
+    languageKeywords.forEach(keyword => {
+      const regex = new RegExp(`\\b(${keyword})\\b`, 'g');
+      highlighted = highlighted.replace(regex, `${colors.keyword}$1${colors.reset}`);
+    });
+    
+    // Highlight function names (simple heuristic)
+    if (language === 'javascript' || language === 'python') {
+      highlighted = highlighted.replace(/\b([a-zA-Z_]\w*)\s*\(/g, `${colors.function}$1${colors.reset}(`);
+    }
+    
+    return highlighted;
+  }).join('\n');
+}
+
 // Clean up markdown artifacts from API response
 function cleanCodeResponse(response) {
   if (!response) return response;
@@ -662,43 +720,112 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // Show clean Git-style diff only
       let responseContent = [];
+      const fileName = path.basename(file_path);
 
       if (isEdit && existingContent) {
         // Editing existing file - show diff of changes using cleaned content
         // Clean the existing content too for consistent comparison
         const cleanExistingContent = cleanCodeResponse(existingContent);
+        const language = getLanguageFromFile(file_path);
+        
+        const oldLines = cleanExistingContent.split('\n');
+        const newLines = cleanResult.split('\n');
+        
+        // Use the diff library to get a proper diff
+        const patch = createPatch(fileName, cleanExistingContent, cleanResult);
+        const patchLines = patch.split('\n');
+        
+        // Count additions and removals
+        let additions = 0;
+        let removals = 0;
+        let formattedDiff = [];
+        
+        // Parse the patch to extract changes and line numbers
+        let lineNumber = 0;
+        let inHunk = false;
+        
+        for (const line of patchLines) {
+          if (line.startsWith('@@')) {
+            // Extract starting line number from hunk header
+            const match = line.match(/@@ -\d+,?\d* \+(\d+)/);
+            if (match) {
+              lineNumber = parseInt(match[1]);
+              inHunk = true;
+            }
+          } else if (inHunk) {
+            if (line.startsWith('+') && !line.startsWith('+++')) {
+              additions++;
+              const codeLine = line.substring(1);
+              let highlighted = codeLine;
+              if (['javascript', 'python', 'html', 'css', 'typescript'].includes(language)) {
+                highlighted = syntaxHighlight(codeLine, language === 'typescript' ? 'javascript' : language);
+              }
+              formattedDiff.push(`    ${String(lineNumber).padStart(3)} \x1b[32m+\x1b[0m ${highlighted}`);
+              lineNumber++;
+            } else if (line.startsWith('-') && !line.startsWith('---')) {
+              removals++;
+              const codeLine = line.substring(1);
+              let highlighted = codeLine;
+              if (['javascript', 'python', 'html', 'css', 'typescript'].includes(language)) {
+                highlighted = syntaxHighlight(codeLine, language === 'typescript' ? 'javascript' : language);
+              }
+              formattedDiff.push(`    ${String(lineNumber).padStart(3)} \x1b[31m-\x1b[0m ${highlighted}`);
+              // Don't increment line number for removals
+            } else if (!line.startsWith('\\')) {
+              // Context line - apply syntax highlighting
+              let highlighted = line;
+              if (['javascript', 'python', 'html', 'css', 'typescript'].includes(language)) {
+                highlighted = syntaxHighlight(line, language === 'typescript' ? 'javascript' : language);
+              }
+              formattedDiff.push(`    ${String(lineNumber).padStart(3)}   ${highlighted}`);
+              lineNumber++;
+            }
+          }
+        }
 
-        const diff = generateGitDiff(cleanExistingContent, cleanResult, file_path);
-
-        if (diff) {
-          // Make diff more Cursor-friendly with visual indicators
-          const cursorFriendlyDiff = diff
-            .replace(/^@@ /gm, '🔍 ')
-            .replace(/^- /gm, '❌ ')
-            .replace(/^\+ /gm, '✅ ')
-            .replace(/^  /gm, '   ');
-
+        if (formattedDiff.length > 0) {
+          const summary = `    Updated \x1b[1m${fileName}\x1b[0m with \x1b[32m${additions}\x1b[0m addition${additions !== 1 ? 's' : ''} and \x1b[31m${removals}\x1b[0m removal${removals !== 1 ? 's' : ''}`;
+          
           responseContent.push({
             type: "text",
-            text: `\`\`\`diff\n${cursorFriendlyDiff}\n\`\`\``
+            text: `\x1b[32m●\x1b[0m Update(\x1b[1m${fileName}\x1b[0m)\n${summary}\n${formattedDiff.join('\n')}`
           });
         }
       } else if (!isEdit) {
-        // New file creation - show Git-style diff using cleaned content
-        const diff = generateGitDiff(null, cleanResult, file_path);
-        if (diff) {
-          // Make diff more Cursor-friendly with visual indicators
-          const cursorFriendlyDiff = diff
-            .replace(/^@@ /gm, '🔍 ')
-            .replace(/^- /gm, '❌ ')
-            .replace(/^\+ /gm, '✅ ')
-            .replace(/^  /gm, '   ');
-
-          responseContent.push({
-            type: "text",
-            text: `\`\`\`diff\n${cursorFriendlyDiff}\n\`\`\``
-          });
+        // New file creation - show clean formatted output with syntax highlighting
+        const language = getLanguageFromFile(file_path);
+        
+        // Apply syntax highlighting if supported
+        let highlightedCode = cleanResult;
+        if (['javascript', 'python', 'html', 'css', 'typescript'].includes(language)) {
+          highlightedCode = syntaxHighlight(cleanResult, language === 'typescript' ? 'javascript' : language);
         }
+        
+        const lines = highlightedCode.split('\n');
+        const lineCount = lines.length;
+        
+        // Format the lines with line numbers
+        let formattedContent = [];
+        for (let i = 0; i < lines.length; i++) {
+          formattedContent.push(`    ${String(i + 1).padStart(3)} \x1b[32m+\x1b[0m ${lines[i]}`);
+        }
+        
+        const summary = `    Created \x1b[1m${fileName}\x1b[0m with \x1b[32m${lineCount}\x1b[0m line${lineCount !== 1 ? 's' : ''}`;
+        
+        // For very long files, truncate the middle
+        if (formattedContent.length > 50) {
+          const preview = [
+            ...formattedContent.slice(0, 20),
+            `\x1b[90m    ... ${formattedContent.length - 40} lines hidden ...\x1b[0m`,
+            ...formattedContent.slice(-20)
+          ];
+          formattedContent = preview;
+        }
+        
+        responseContent.push({
+          type: "text",
+          text: `\x1b[32m●\x1b[0m Create(\x1b[1m${fileName}\x1b[0m)\n${summary}\n${formattedContent.join('\n')}`
+        });
       }
       
       return {
