@@ -112,7 +112,8 @@ export async function interactiveConfig() {
     if (serviceName === 'Cursor') {
       // Execute Cursor MCP setup
       try {
-        const configPath = path.join(process.env.HOME, '.cursor', 'mcp.json');
+        const homeDirectory = process.platform === 'win32' ? process.env.USERPROFILE : process.env.HOME;
+        const configPath = path.join(homeDirectory, '.cursor', 'mcp.json');
         
         // Ensure directory exists
         await fs.mkdir(path.dirname(configPath), { recursive: true });
