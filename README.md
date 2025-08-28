@@ -1,18 +1,18 @@
-# Cerebras Code MCP Server v1.1.4
+# Cerebras Code MCP Server v1.2.0
 
-This MCP server is designed for **planning with another model** and **making changes with Cerebras** to maximize speed and intelligence while avoiding API limits. Use your preferred AI for planning and strategy, then leverage Cerebras for high-quality code generation.
+This MCP server is designed for **planning with Claude Code** and **making changes with Cerebras** to maximize speed and intelligence while avoiding API limits. Use your preferred AI for planning and strategy, then leverage Cerebras for high-quality code generation.
 
-It will use the Qwen 3 Coder model, and can be embedded in IDEs like Claude Code, Cursor, etc.
+It will use the Qwen 3 Coder model, and can be embedded in IDEs like Claude Code, with beta support for Cursor.
 
-## ✨ New in v1.1
+## ✨ New in v1.2
 
-- **Context Files Support**: Include multiple files as context for better code generation
-- **Smart Deduplication**: Automatically filters output file from context to avoid duplication
-- **Enhanced Tool**: Improved `write` tool with context files support
-- **Enhanced Visual Diffs**: Git-style diffs with emoji indicators (✅ additions, ❌ removals, 🔍 changes)
-- **Better Error Handling**: Gracefully handles missing context files and API failures
+- **Project Restructure**: Organized project into smaller, more manageable components for DX purposes
+- **Stronger Instruction**: Improved `write` usage count among models
+- **Claude Code - Enhanced Visual Diffs**: Displays changes/edits in a pretty format
+- **Hide User API Key**: For security, doesn't display entered API keys in the terminal
+- **Update Config Wizard for Messy Configs**: Ensure user setup always works despite previous installs
 
-## 1. Install
+## 1. Install the NPM Package
 ```bash
 npm install -g cerebras-code-mcp
 ```
@@ -26,13 +26,14 @@ Visit [OpenRouter](https://openrouter.ai/) and get a key to use as a fallback pr
 You can set this key in your MCP settings under OPENROUTER_API_KEY, and it will trigger automatically if anything goes wrong with calling Cerebras.
 
 
-## 3. Run the command to open the setup wizard for Cursor/Claude Code
+## 3. Run the Setup Wizard for Claude Code / Cursor
 ```bash
 cerebras-mcp --config
 ```
 
 Use the setup wizard to configure the tool on your machine.
 
+If you're using Cursor, it will ask you to copy and paste a prompt into your Cursor User Rules.
 
 ## 4. Usage
 
@@ -40,14 +41,9 @@ The MCP tool will appear as `write` in your tool list. It supports:
 
 - **Natural language prompts**: Just describe what you want in plain English
 - **Context files**: Include multiple files as context for better code understanding
-- **Visual diffs**: See changes with emoji-enhanced Git-style diffs
+- **Visual diffs**: See changes with Git-style diffs
 
 Example usage:
 ```
 Create a REST API with Express.js that handles user authentication
-```
-
-If your IDE uses native tooling instead of the MCP server, you can use:
-```
-Use the write tool to create a REST API with Express.js that handles user authentication
 ```
