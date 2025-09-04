@@ -1,16 +1,16 @@
-# Cerebras Code MCP Server v1.2.0
+# Cerebras Code MCP Server v1.2.2
 
 This MCP server is designed for **planning with Claude Code** and **making changes with Cerebras** to maximize speed and intelligence while avoiding API limits. Use your preferred AI for planning and strategy, then leverage Cerebras for high-quality code generation.
 
 It will use the Qwen 3 Coder model, and can be embedded in IDEs like Claude Code, with beta support for Cursor.
 
-## ✨ New in v1.2
+## ✨ New in v1.2.2
 
 - **Project Restructure**: Organized project into smaller, more manageable components for DX purposes
 - **Stronger Instruction**: Improved `write` usage count among models
 - **Claude Code - Enhanced Visual Diffs**: Displays changes/edits in a pretty format
 - **Hide User API Key**: For security, doesn't display entered API keys in the terminal
-- **Update Config Wizard for Messy Configs**: Ensure user setup always works despite previous installs
+- **Update Config Wizard for Messy Configs**: Added a removal wizard that helps uninstall
 
 ## 1. Install the NPM Package
 ```bash
@@ -26,7 +26,7 @@ Visit [OpenRouter](https://openrouter.ai/) and get a key to use as a fallback pr
 You can set this key in your MCP settings under OPENROUTER_API_KEY, and it will trigger automatically if anything goes wrong with calling Cerebras.
 
 
-## 3. Run the Setup Wizard for Claude Code / Cursor
+## 3. Run the Setup Wizard for Claude Code / Cursor / Cline
 ```bash
 cerebras-mcp --config
 ```
@@ -35,7 +35,14 @@ Use the setup wizard to configure the tool on your machine.
 
 If you're using Cursor, it will ask you to copy and paste a prompt into your Cursor User Rules.
 
-## 4. Usage
+## 4. Removal/Cleanup (Optional)
+```bash
+cerebras-mcp --remove
+```
+
+Use the removal wizard to clean up configurations for any IDE or perform a complete cleanup.
+
+## 5. Usage
 
 The MCP tool will appear as `write` in your tool list. It supports:
 

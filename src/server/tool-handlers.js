@@ -8,7 +8,11 @@ import { formatEditResponse, formatCreateResponse } from '../formatting/response
 // Tool handler for the write tool
 export async function handleWriteTool(args) {
   try {
+    // Get IDE identification from environment variable
+    const ideSource = process.env.CEREBRAS_MCP_IDE || 'unknown';
+    
     await debugLog('=== MCP REQUEST DEBUG ===');
+    await debugLog(`IDE Source: ${ideSource}`);
     await debugLog(`Tool called: write`);
     await debugLog(`Arguments: ${JSON.stringify(args, null, 2)}`);
     await debugLog('========================');
@@ -68,6 +72,7 @@ export async function handleWriteTool(args) {
     
     // Log the full response for debugging
     await debugLog('=== MCP RESPONSE DEBUG ===');
+    await debugLog(`IDE Source: ${ideSource}`);
     await debugLog('Response type: Standard text diff');
     await debugLog(`Number of content items: ${responseContent.length}`);
     await debugLog(`Response structure: ${JSON.stringify(response, null, 2)}`);
@@ -75,7 +80,11 @@ export async function handleWriteTool(args) {
     
     return response;
   } catch (error) {
+    // Get IDE identification from environment variable (in case of error)
+    const ideSource = process.env.CEREBRAS_MCP_IDE || 'unknown';
+    
     await debugLog('=== MCP ERROR DEBUG ===');
+    await debugLog(`IDE Source: ${ideSource}`);
     await debugLog(`Error occurred: ${error.message}`);
     await debugLog('=======================');
     
@@ -83,7 +92,7 @@ export async function handleWriteTool(args) {
     return {
       content: [{
         type: "text",
-        text: `Error in cerebras-code server: ${error.message}`
+        text: `Error in cerebras-mcp server: ${error.message}`
       }]
     };
   }

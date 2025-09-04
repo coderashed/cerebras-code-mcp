@@ -10,15 +10,20 @@
  */
 
 import { config, debugLog, LOG_FILE } from './config/constants.js';
-import { interactiveConfig } from './config/interactive-config.js';
+import { interactiveConfig, removalWizard } from './config/interactive-config.js';
 import { startServer } from './server/mcp-server.js';
 
 // Main function
 async function main() {
   try {
-    // Check if --config flag is provided
+    // Check for configuration flags
     if (process.argv.includes('--config')) {
       await interactiveConfig();
+      return;
+    }
+    
+    if (process.argv.includes('--remove')) {
+      await removalWizard();
       return;
     }
     

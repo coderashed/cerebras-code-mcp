@@ -5,7 +5,7 @@ import { handleWriteTool } from './tool-handlers.js';
 
 // Create MCP server with enhanced auto-instructions
 export const server = new Server({
-  name: "cerebras-code-mcp",
+  name: "cerebras-mcp",
   version: "1.0.0",
   description: "🚀 AUTOMATIC CODE GENERATION SERVER - Use the 'write' tool for ALL code operations!",
   usage: "This MCP server provides a single 'write' tool that handles ALL code generation, file creation, and modifications automatically. Models MUST use this tool instead of direct file editing."

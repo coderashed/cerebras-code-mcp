@@ -1,7 +1,7 @@
 {
   "name": "cerebras-code-mcp",
-  "version": "1.2.0",
-  "description": "Model Context Protocol (MCP) server for Cerebras Code API integration with any MCP-compatible client. Run 'cerebras-mcp --config' for interactive setup.",
+  "version": "1.2.2",
+  "description": "Model Context Protocol (MCP) server for Cerebras Code API integration with any MCP-compatible client. Run 'cerebras-mcp --config' for setup or 'cerebras-mcp --remove' for cleanup.",
   "main": "src/index.js",
   "type": "module",
   "bin": {
@@ -29,12 +29,12 @@
   "author": "Kevin Taylor <kevin.taylor@cerebras.net>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kevint-cerebras/cerebras-code-mcp.git"
+    "url": "git+https://github.com/kevint-cerebras/cerebras-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/kevint-cerebras/cerebras-code-mcp/issues"
+    "url": "https://github.com/kevint-cerebras/cerebras-mcp/issues"
   },
-  "homepage": "https://github.com/kevint-cerebras/cerebras-code-mcp#readme",
+  "homepage": "https://github.com/kevint-cerebras/cerebras-mcp#readme",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
