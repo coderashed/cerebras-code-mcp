@@ -5,10 +5,11 @@ export const MODEL_CONFIGS = {
       contextWindow: 65536,
       limits: {
         requests: { minute: 30, hour: 900, day: 14400 }
+        // tokens: { minute: 64000, hour: 1000000, day: 1000000 }
       }
     },
     paid: {
-      contextWindow: 131000,
+      contextWindow: 65536,
       limits: {
         requests: { minute: 30, hour: 900, day: 14400 }
       }
@@ -19,6 +20,7 @@ export const MODEL_CONFIGS = {
       contextWindow: 65536,
       limits: {
         requests: { minute: 30, hour: 900, day: 14400 }
+        // tokens: { minute: 64000, hour: 1000000, day: 1000000 }
       }
     },
     paid: {
@@ -33,10 +35,11 @@ export const MODEL_CONFIGS = {
       contextWindow: 8192,
       limits: {
         requests: { minute: 30, hour: 900, day: 14400 }
+        // tokens: { minute: 60000, hour: 1000000, day: 1000000 }
       }
     },
     paid: {
-      contextWindow: 32768,
+      contextWindow: 65536,
       limits: {
         requests: { minute: 30, hour: 900, day: 14400 }
       }
@@ -47,10 +50,11 @@ export const MODEL_CONFIGS = {
       contextWindow: 8192,
       limits: {
         requests: { minute: 30, hour: 900, day: 14400 }
+        // tokens: { minute: 60000, hour: 1000000, day: 1000000 }
       }
     },
     paid: {
-      contextWindow: 32768,
+      contextWindow: 65536,
       limits: {
         requests: { minute: 30, hour: 900, day: 14400 }
       }
@@ -61,10 +65,11 @@ export const MODEL_CONFIGS = {
       contextWindow: 8192,
       limits: {
         requests: { minute: 30, hour: 900, day: 14400 }
+        // tokens: { minute: 60000, hour: 1000000, day: 1000000 }
       }
     },
     paid: {
-      contextWindow: 32768,
+      contextWindow: 65536,
       limits: {
         requests: { minute: 30, hour: 900, day: 14400 }
       }
@@ -75,10 +80,11 @@ export const MODEL_CONFIGS = {
       contextWindow: 64000,
       limits: {
         requests: { minute: 30, hour: 900, day: 14400 }
+        // tokens: { minute: 60000, hour: 1000000, day: 1000000 }
       }
     },
     paid: {
-      contextWindow: 64000,
+      contextWindow: 65536,
       limits: {
         requests: { minute: 30, hour: 900, day: 14400 }
       }
@@ -89,6 +95,7 @@ export const MODEL_CONFIGS = {
       contextWindow: 65536,
       limits: {
         requests: { minute: 30, hour: 900, day: 14400 }
+        // tokens: { minute: 60000, hour: 1000000, day: 1000000 }
       }
     },
     paid: {
@@ -103,6 +110,7 @@ export const MODEL_CONFIGS = {
       contextWindow: 65536,
       limits: {
         requests: { minute: 30, hour: 900, day: 14400 }
+        // tokens: { minute: 64000, hour: 1000000, day: 1000000 }
       }
     },
     paid: {
@@ -116,13 +124,14 @@ export const MODEL_CONFIGS = {
     free: {
       contextWindow: 65536,
       limits: {
-        requests: { minute: 10, hour: 100, day: 100 }  // Very restricted!
+        requests: { minute: 10, hour: 100, day: 100 }
+        // tokens: { minute: 150000, hour: 1000000, day: 1000000 }
       }
     },
     paid: {
-      contextWindow: 131072,  // 2x context window on paid
+      contextWindow: 65536,
       limits: {
-        requests: { minute: 50, hour: 3000, day: 72000 }  // 5x/30x/720x more requests!
+        requests: { minute: 30, hour: 900, day: 14400 }
       }
     }
   }

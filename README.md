@@ -67,20 +67,20 @@ The server now supports using multiple Cerebras API keys in parallel to avoid ra
 
 ### Configuration
 
-Set environment variables for your API keys:
+To enable rate limiting and multiple key support, set BOTH environment variables:
 
 ```bash
-# Primary/Free tier key
+# Free tier key (required for rate limiting)
 export CEREBRAS_FREE_KEY=your-free-key-here
-# or use the existing CEREBRAS_API_KEY
-export CEREBRAS_API_KEY=your-free-key-here
 
-# Secondary/Paid tier key (optional)
+# Paid tier key (required for rate limiting)
 export CEREBRAS_PAID_KEY=your-paid-key-here
 
 # Routing strategy (optional, defaults to 'cost')
 export ROUTING_STRATEGY=cost  # Options: 'cost', 'balanced', 'roundrobin'
 ```
+
+**Note**: Rate limiting is only activated when BOTH keys are provided. Single key users can continue using `CEREBRAS_API_KEY` as before.
 
 ### How It Works
 
@@ -115,3 +115,31 @@ With both free and paid keys configured:
 3. After 1 minute, free tier resets → Can use free tier again
 
 This ensures you never hit rate limit errors while maximizing free tier usage!
+
+## 7. Updating Rate Limits
+
+The system includes default rate limits based on Cerebras' free tier. If your account has different limits, you can update them using the configuration script.
+
+### How to Update Your Rate Limits
+
+1. **Copy your rate limits** from the Cerebras dashboard
+2. **Run the update script**:
+   ```bash
+   node scripts/update-rate-limits.js --tier free  # or --tier paid
+   ```
+3. **Paste the table** and type `END` when done
+
+### Example Usage
+
+```bash
+$ node scripts/update-rate-limits.js --tier free
+📋 Paste the FREE tier rate limits table from Cerebras dashboard
+   (Type "END" on a new line when done)
+
+[Paste your rate limits table here]
+END
+
+✅ Successfully updated rate limits
+```
+
+The script will parse your pasted rate limits and update the configuration automatically.
