@@ -2,7 +2,7 @@ import { callCerebras } from '../cerebras.js';
 import { callOpenRouter } from '../openrouter.js';
 import { config } from '../../config/constants.js';
 import { ProviderPool } from '../../providers/provider-pool.js';
-import { CostOptimizedStrategy, LoadBalancedStrategy, RoundRobinStrategy } from '../../routing/routing-strategy.js';
+import { CostOptimizedStrategy, PerformanceOptimizedStrategy, LoadBalancedStrategy, RoundRobinStrategy } from '../../routing/routing-strategy.js';
 
 // Create API client wrappers that match our decorator interface
 class CerebrasApiClient {
@@ -56,21 +56,23 @@ function initializeProviderPool() {
   }
   
   if (clients.length > 0) {
-    // Select strategy based on environment variable or default to cost-optimized
-    const strategyName = process.env.ROUTING_STRATEGY || 'cost';
+    // Select strategy based on environment variable or default to performance (paid first)
+    const strategyName = process.env.ROUTING_STRATEGY || 'performance';
     let strategy;
     
     switch (strategyName) {
+      case 'cost':
+        strategy = new CostOptimizedStrategy();
+        break;
       case 'balanced':
         strategy = new LoadBalancedStrategy();
         break;
       case 'roundrobin':
         strategy = new RoundRobinStrategy();
         break;
-      case 'cost':
+      case 'performance':
       default:
-        strategy = new CostOptimizedStrategy();
-    }
+        strategy = new PerformanceOptimizedStrategy();
     
     providerPool = new ProviderPool(clients, strategy);
   }

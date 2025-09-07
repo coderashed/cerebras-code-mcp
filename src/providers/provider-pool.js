@@ -1,12 +1,12 @@
 import { RateLimitedProvider } from './rate-limited-provider.js';
-import { CostOptimizedStrategy } from '../routing/routing-strategy.js';
+import { PerformanceOptimizedStrategy } from '../routing/routing-strategy.js';
 import { MODEL_CONFIGS } from './model-configs.js';
 
 // Manages multiple API keys with rate limiting
 export class ProviderPool {
   constructor(apiClients, strategy = null) {
     this.providers = [];
-    this.strategy = strategy || new CostOptimizedStrategy();
+    this.strategy = strategy || new PerformanceOptimizedStrategy();
     
     // Create rate-limited providers for each API client
     for (const client of apiClients) {

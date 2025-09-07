@@ -26,6 +26,27 @@ export class CostOptimizedStrategy extends RoutingStrategy {
   }
 }
 
+// Prefer paid tier for better context window and higher limits
+export class PerformanceOptimizedStrategy extends RoutingStrategy {
+  select(providers, model) {
+    const available = providers.filter(p => p.canHandle(model));
+    
+    if (available.length === 0) {
+      throw new Error(`NoProvidersAvailable: ${model}`);
+    }
+    
+    // Sort by tier (paid first for 2x context window) then by utilization
+    available.sort((a, b) => {
+      if (a.tier !== b.tier) {
+        return a.tier === 'paid' ? -1 : 1;
+      }
+      return a.getUtilization(model) - b.getUtilization(model);
+    });
+    
+    return available[0];
+  }
+}
+
 // Round robin between available providers
 export class RoundRobinStrategy extends RoutingStrategy {
   constructor() {

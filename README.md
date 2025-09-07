@@ -74,8 +74,8 @@ Rate limiting and multi-key support activates ONLY when both keys are configured
 export CEREBRAS_FREE_KEY=your-free-key-here
 export CEREBRAS_PAID_KEY=your-paid-key-here
 
-# Routing strategy (optional, defaults to 'cost')
-export ROUTING_STRATEGY=cost  # Options: 'cost', 'balanced', 'roundrobin'
+# Routing strategy (optional, defaults to 'performance')
+export ROUTING_STRATEGY=performance  # Options: 'performance', 'cost', 'balanced', 'roundrobin'
 ```
 
 **Backward Compatibility**: 
@@ -87,32 +87,37 @@ export ROUTING_STRATEGY=cost  # Options: 'cost', 'balanced', 'roundrobin'
 1. **Automatic Rate Tracking**: The system tracks request counts per model per key across minute/hour/day windows
 2. **Intelligent Routing**: Requests are automatically routed to available keys based on the selected strategy
 3. **Seamless Failover**: When one key hits its limit, requests automatically shift to other available keys
-4. **Cost Optimization**: Default strategy prefers free tier keys to minimize costs
+4. **Performance by Default**: Default strategy prefers paid tier for larger context windows and higher limits
 
-### Rate Limits by Model
+### Rate Limits
 
-The system respects Cerebras' rate limits for each model and tier:
+The system respects your Cerebras account's rate limits, which vary by:
+- **Model**: Different models have different limits
+- **Tier**: Paid tiers typically have higher limits
+- **Subscription**: Your specific plan determines exact numbers
 
-**Free Tier Examples:**
-- `llama-3.3-70b`: 30 req/min, 900 req/hour, 14,400 req/day
-- `qwen-3-coder-480b`: 10 req/min, 100 req/hour, 100 req/day (very limited!)
-
-**Paid Tier Examples:**
-- `llama-3.3-70b`: Same as free tier
-- `qwen-3-coder-480b`: 50 req/min, 3,000 req/hour, 72,000 req/day (5x-720x more!)
+To configure your specific limits, see [Updating Rate Limits](#7-updating-rate-limits) below.
 
 ### Routing Strategies
 
-- **`cost`** (default): Uses free tier keys first, falls back to paid when needed
+- **`performance`** (default): Uses paid tier first for 2x context window and higher limits, falls back to free
+- **`cost`**: Uses free tier first to minimize costs, falls back to paid when needed
 - **`balanced`**: Distributes load based on available capacity
 - **`roundrobin`**: Alternates between available keys
 
 ### Example Scenario
 
-With both free and paid keys configured:
-1. First 10 requests to `qwen-3-coder-480b` → Free tier
-2. Next 40 requests → Automatically shift to paid tier
-3. After 1 minute, free tier resets → Can use free tier again
+With both free and paid keys configured (performance mode):
+1. Requests start with paid tier (often has larger context window)
+2. When paid tier hits rate limits → Automatically shifts to free tier
+3. When limits reset → Returns to paid tier priority
+
+Benefits of paid-first strategy:
+- **Larger context windows** on paid tiers (e.g., 2x for some models)
+- **Higher rate limits** (varies by subscription)
+- **Better performance** for large codebases
+
+Use `ROUTING_STRATEGY=cost` if you want to maximize free tier usage first.
 
 This ensures you never hit rate limit errors while maximizing free tier usage!
 
