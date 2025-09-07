@@ -73,6 +73,8 @@ function initializeProviderPool() {
       case 'performance':
       default:
         strategy = new PerformanceOptimizedStrategy();
+        break;
+    }
     
     providerPool = new ProviderPool(clients, strategy);
   }

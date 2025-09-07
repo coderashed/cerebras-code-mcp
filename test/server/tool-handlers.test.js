@@ -6,7 +6,8 @@ import fs from 'fs/promises';
 
 // Mock dependencies
 vi.mock('../../src/config/constants.js', () => ({
-  debugLog: vi.fn()
+  debugLog: vi.fn(),
+  config: {}
 }));
 
 vi.mock('../../src/utils/file-utils.js', () => ({
@@ -18,7 +19,12 @@ vi.mock('../../src/utils/code-cleaner.js', () => ({
   cleanCodeResponse: vi.fn(code => code) // Pass through by default
 }));
 
+// Mock both routers since the import is dynamic
 vi.mock('../../src/api/router/enhanced-router.js', () => ({
+  routeAPICall: vi.fn()
+}));
+
+vi.mock('../../src/api/router/router.js', () => ({
   routeAPICall: vi.fn()
 }));
 
@@ -29,8 +35,17 @@ vi.mock('../../src/formatting/response-formatter.js', () => ({
 
 import { readFileContent, writeFileContent } from '../../src/utils/file-utils.js';
 import { cleanCodeResponse } from '../../src/utils/code-cleaner.js';
-import { routeAPICall } from '../../src/api/router/enhanced-router.js';
 import { formatEditResponse, formatCreateResponse } from '../../src/formatting/response-formatter.js';
+
+// Import the mocked router - it will be one or the other based on env vars
+let routeAPICall;
+if (process.env.CEREBRAS_FREE_KEY && process.env.CEREBRAS_PAID_KEY) {
+  const module = await import('../../src/api/router/enhanced-router.js');
+  routeAPICall = module.routeAPICall;
+} else {
+  const module = await import('../../src/api/router/router.js');
+  routeAPICall = module.routeAPICall;
+}
 
 describe('ToolHandlers', () => {
   beforeEach(() => {
