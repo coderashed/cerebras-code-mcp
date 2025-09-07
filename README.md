@@ -67,20 +67,20 @@ The server now supports using multiple Cerebras API keys in parallel to avoid ra
 
 ### Configuration
 
-To enable rate limiting and multiple key support, set BOTH environment variables:
+Rate limiting and multi-key support activates ONLY when both keys are configured:
 
 ```bash
-# Free tier key (required for rate limiting)
+# BOTH keys must be set to enable rate limiting
 export CEREBRAS_FREE_KEY=your-free-key-here
-
-# Paid tier key (required for rate limiting)
 export CEREBRAS_PAID_KEY=your-paid-key-here
 
 # Routing strategy (optional, defaults to 'cost')
 export ROUTING_STRATEGY=cost  # Options: 'cost', 'balanced', 'roundrobin'
 ```
 
-**Note**: Rate limiting is only activated when BOTH keys are provided. Single key users can continue using `CEREBRAS_API_KEY` as before.
+**Backward Compatibility**: 
+- If you only set `CEREBRAS_API_KEY`: Original behavior (no rate limiting)
+- If you set both `CEREBRAS_FREE_KEY` and `CEREBRAS_PAID_KEY`: Rate limiting activated with automatic failover
 
 ### How It Works
 

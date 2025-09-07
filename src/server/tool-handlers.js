@@ -2,8 +2,16 @@ import path from 'path';
 import { debugLog } from '../config/constants.js';
 import { readFileContent, writeFileContent } from '../utils/file-utils.js';
 import { cleanCodeResponse } from '../utils/code-cleaner.js';
-import { routeAPICall } from '../api/router/enhanced-router.js';
 import { formatEditResponse, formatCreateResponse } from '../formatting/response-formatter.js';
+
+// Dynamic router selection based on environment variables
+// Use enhanced router (with rate limiting) only if multiple keys are configured
+// Otherwise use original router for backward compatibility
+const useEnhancedRouter = !!(process.env.CEREBRAS_FREE_KEY && process.env.CEREBRAS_PAID_KEY);
+
+const { routeAPICall } = useEnhancedRouter 
+  ? await import('../api/router/enhanced-router.js')
+  : await import('../api/router/router.js');
 
 // Tool handler for the write tool
 export async function handleWriteTool(args) {
