@@ -66,6 +66,9 @@ dist/
 build/
 *.tsbuildinfo
 
+# Claude IDE files
+.claude/
+
 
 
 
