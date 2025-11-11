@@ -2,7 +2,7 @@
 export const config = {
   // Cerebras configuration
   cerebrasApiKey: process.env.CEREBRAS_API_KEY,
-  cerebrasModel: process.env.CEREBRAS_MODEL || "qwen-3-coder-480b",
+  cerebrasModel: process.env.CEREBRAS_MODEL || "zai-glm-4.6",
   maxTokens: process.env.CEREBRAS_MAX_TOKENS ? parseInt(process.env.CEREBRAS_MAX_TOKENS) : null,
   temperature: parseFloat(process.env.CEREBRAS_TEMPERATURE) || 0.1,
   
