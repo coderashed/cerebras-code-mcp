@@ -55,6 +55,9 @@ jspm_packages/
 # Claude Code local config
 .claude/
 
+# AI reference files (symlinks to external repos)
+.ai/references/
+
 # OS generated files
 .DS_Store
 .DS_Store?
