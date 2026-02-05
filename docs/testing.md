@@ -15,9 +15,10 @@ This document covers the testing tools, processes, and conventions for the cereb
 ### Testing
 
 ```bash
-npm test              # Run all tests once
-npm run test:watch    # Run tests in watch mode (re-runs on file changes)
-npm run test:coverage # Run tests with coverage report
+npm test                # Run unit tests once
+npm run test:watch      # Run unit tests in watch mode (re-runs on file changes)
+npm run test:coverage   # Run unit tests with coverage report
+npm run test:integration # Run integration tests (requires API keys)
 ```
 
 ### Linting
@@ -57,6 +58,10 @@ tests/
 │   ├── planner.test.js
 │   ├── tool-handlers.test.js
 │   └── worker.test.js
+├── integration/
+│   ├── helpers/
+│   │   └── setup.js
+│   └── write.integration.test.js
 └── utils/
     ├── code-cleaner.test.js
     └── file-utils.test.js
@@ -66,8 +71,8 @@ tests/
 
 ### File Naming
 
-- Test files must end with `.test.js`
-- Place tests in the matching directory under `tests/`
+- Unit test files: `*.test.js` under `tests/` mirroring `src/` structure
+- Integration test files: `*.integration.test.js` under `tests/integration/`
 - Example: `src/api/cerebras.js` → `tests/api/cerebras.test.js`
 
 ### Test Structure
@@ -132,9 +137,40 @@ it('should reject with error', async () => {
 });
 ```
 
+## Integration Tests
+
+Integration tests make real API calls and require provider API keys to be set as environment variables.
+
+### Prerequisites
+
+- `CEREBRAS_API_KEY` — required for Cerebras provider tests
+- `OPENROUTER_API_KEY` — required for OpenRouter provider tests
+- Both keys required for fallback tests (Cerebras → OpenRouter)
+
+Tests for a provider are automatically skipped if its API key is not set.
+
+### What's Tested
+
+| Test | Description |
+|------|-------------|
+| provider: cerebras | Direct Cerebras API call |
+| provider: openrouter | Direct OpenRouter API call |
+| fallback: cerebras → openrouter | Cerebras fails (invalid key), router falls back to OpenRouter |
+
+### Helpers (`tests/integration/helpers/setup.js`)
+
+- `forceProvider(provider)` — isolates a single provider by blanking the other's key
+- `forceFallback()` — sets an invalid Cerebras key (truthy but fails auth) to trigger the fallback path
+- `hasProvider(provider)` — checks if a provider's API key is available
+- `createTempDir()` — creates a temp directory for test file output, returns `{ dir, cleanup }`
+
+### Configuration
+
+Integration tests use a separate vitest config (`vitest.integration.config.js`) with a 30-second test timeout to accommodate real API latency.
+
 ## Configuration Files
 
-### vitest.config.js
+### vitest.config.js (unit tests)
 
 ```javascript
 import { defineConfig } from 'vitest/config';
@@ -150,6 +186,21 @@ export default defineConfig({
       include: ['src/**/*.js'],
       exclude: ['src/index.js'],
     },
+  },
+});
+```
+
+### vitest.integration.config.js (integration tests)
+
+```javascript
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['tests/integration/**/*.test.js'],
+    testTimeout: 30000,
   },
 });
 ```
