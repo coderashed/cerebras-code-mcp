@@ -58,6 +58,9 @@ jspm_packages/
 # AI reference files (symlinks to external repos)
 .ai/references/
 
+# AI coaching/test files (not part of source)
+.ai/glm-coaching/
+
 # OS generated files
 .DS_Store
 .DS_Store?
