@@ -66,6 +66,10 @@ dist/
 build/
 *.tsbuildinfo
 
+# AI/Claude working directories
+.ai/
+.claude/
+
 
 
 
