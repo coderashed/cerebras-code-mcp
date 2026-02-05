@@ -173,51 +173,62 @@ describe.skipIf(providers.length === 0)('Integration: write tool', () => {
     }, 30_000);
   });
 
-  describe('error handling', () => {
-    it('should return structured error when prompt is missing', async () => {
-      const filePath = path.join(tempDir, 'error-no-prompt.js');
+});
 
-      const result = await handleWriteTool({
-        file_path: filePath,
-      });
+describe('Integration: error handling (no API keys required)', () => {
+  let tempDir, cleanup;
 
-      expect(result.content).toBeDefined();
-      expect(result.content[0].text).toMatch(/prompt is required/i);
-
-      // File should not have been created
-      await expect(fs.access(filePath)).rejects.toThrow();
-    });
-
-    it('should return structured error when file_path is missing', async () => {
-      const result = await handleWriteTool({
-        prompt: 'Create something',
-      });
-
-      expect(result.content).toBeDefined();
-      expect(result.content[0].text).toMatch(/file_path is required/i);
-    });
-
-    it('should return structured error with invalid API key', async () => {
-      const savedCerebras = config.cerebrasApiKey;
-      const savedOpenRouter = config.openRouterApiKey;
-      config.cerebrasApiKey = 'invalid-key-xxx';
-      config.openRouterApiKey = '';
-
-      const filePath = path.join(tempDir, 'should-not-exist.js');
-
-      const result = await handleWriteTool({
-        file_path: filePath,
-        prompt: 'Create a hello world function',
-      });
-
-      config.cerebrasApiKey = savedCerebras;
-      config.openRouterApiKey = savedOpenRouter;
-
-      expect(result.content).toBeDefined();
-      expect(result.content[0].text).toMatch(/error/i);
-
-      // File should not have been created (API failed before write)
-      await expect(fs.access(filePath)).rejects.toThrow();
-    }, 30_000);
+  beforeAll(async () => {
+    ({ dir: tempDir, cleanup } = await createTempDir());
   });
+
+  afterAll(async () => {
+    await cleanup();
+  });
+
+  it('should return structured error when prompt is missing', async () => {
+    const filePath = path.join(tempDir, 'error-no-prompt.js');
+
+    const result = await handleWriteTool({
+      file_path: filePath,
+    });
+
+    expect(result.content).toBeDefined();
+    expect(result.content[0].text).toMatch(/prompt is required/i);
+
+    // File should not have been created
+    await expect(fs.access(filePath)).rejects.toThrow();
+  });
+
+  it('should return structured error when file_path is missing', async () => {
+    const result = await handleWriteTool({
+      prompt: 'Create something',
+    });
+
+    expect(result.content).toBeDefined();
+    expect(result.content[0].text).toMatch(/file_path is required/i);
+  });
+
+  it('should return structured error with invalid API key', async () => {
+    const savedCerebras = config.cerebrasApiKey;
+    const savedOpenRouter = config.openRouterApiKey;
+    config.cerebrasApiKey = 'invalid-key-xxx';
+    config.openRouterApiKey = '';
+
+    const filePath = path.join(tempDir, 'should-not-exist.js');
+
+    const result = await handleWriteTool({
+      file_path: filePath,
+      prompt: 'Create a hello world function',
+    });
+
+    config.cerebrasApiKey = savedCerebras;
+    config.openRouterApiKey = savedOpenRouter;
+
+    expect(result.content).toBeDefined();
+    expect(result.content[0].text).toMatch(/error/i);
+
+    // File should not have been created (API failed before write)
+    await expect(fs.access(filePath)).rejects.toThrow();
+  }, 30_000);
 });
