@@ -48,12 +48,8 @@ export const getClineRulesPath = () => {
     // Windows: Documents\Cline\Rules
     return path.join(homeDir, 'Documents', 'Cline', 'Rules');
   } else {
-    // macOS/Linux: ~/Documents/Cline/Rules (fallback to ~/Cline/Rules)
-    const documentsPath = path.join(homeDir, 'Documents', 'Cline', 'Rules');
-    const fallbackPath = path.join(homeDir, 'Cline', 'Rules');
-    
-    // For now, return the primary path - the wizard will handle directory creation
-    return documentsPath;
+    // macOS/Linux: ~/Documents/Cline/Rules
+    return path.join(homeDir, 'Documents', 'Cline', 'Rules');
   }
 };
 
@@ -67,7 +63,7 @@ export async function debugLog(message) {
   // Also append to file
   try {
     await fs.appendFile(LOG_FILE, logMessage);
-  } catch (error) {
+  } catch (_error) {
     // Ignore file write errors
   }
 }

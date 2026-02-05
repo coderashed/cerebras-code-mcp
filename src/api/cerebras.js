@@ -5,8 +5,7 @@ import { readFileContent, getLanguageFromFile } from '../utils/file-utils.js';
 import { cleanCodeResponse } from '../utils/code-cleaner.js';
 // Call Cerebras Code API - generates only code, no explanations
 export async function callCerebras(prompt, context = "", outputFile = "", language = null, contextFiles = []) {
-  try {
-    // Check if Cerebras API key is available
+  // Check if Cerebras API key is available
     if (!config.cerebrasApiKey) {
       throw new Error("No Cerebras API key found. Please set CEREBRAS_API_KEY environment variable.");
     }
@@ -130,8 +129,4 @@ export async function callCerebras(prompt, context = "", outputFile = "", langua
       // Re-throw the error for the router to handle fallback logic
       throw new Error(`Cerebras API call failed: ${error.message}`);
     }
-  } catch (error) {
-    // Re-throw any setup errors for the router to handle fallback logic
-    throw error;
-  }
 }

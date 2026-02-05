@@ -1,5 +1,4 @@
 import { createPatch } from 'diff';
-import path from 'path';
 
 // Generate a simple diff between old and new content
 export function generateDiff(oldContent, newContent) {
@@ -8,7 +7,7 @@ export function generateDiff(oldContent, newContent) {
   const oldLines = oldContent.split('\n');
   const newLines = newContent.split('\n');
   
-  let diff = [];
+  const diff = [];
   let i = 0, j = 0;
   
   while (i < oldLines.length || j < newLines.length) {

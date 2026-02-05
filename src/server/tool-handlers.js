@@ -51,7 +51,7 @@ export async function handleWriteTool(args) {
     await writeFileContent(file_path, cleanResult);
 
     // Format the response based on operation type
-    let responseContent = [];
+    const responseContent = [];
     const fileName = path.basename(file_path);
 
     if (isEdit && existingContent) {

@@ -1,5 +1,4 @@
 import { createPatch } from 'diff';
-import path from 'path';
 import { syntaxHighlight } from './syntax-highlighter.js';
 import { getLanguageFromFile } from '../utils/file-utils.js';
 
