@@ -10,7 +10,7 @@ export const config = {
   openRouterApiKey: process.env.OPENROUTER_API_KEY,
   openRouterSiteUrl: process.env.OPENROUTER_SITE_URL || 'https://github.com/cerebras/cerebras-code-mcp',
   openRouterSiteName: process.env.OPENROUTER_SITE_NAME || 'Cerebras MCP',
-  openRouterModel: 'qwen/qwen3-coder'
+  openRouterModel: process.env.OPENROUTER_MODEL || 'qwen/qwen3-coder'
 };
 
 // Debug logging to file  
