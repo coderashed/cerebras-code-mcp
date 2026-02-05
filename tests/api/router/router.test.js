@@ -84,6 +84,21 @@ describe('routeAPICall', () => {
       'prompt', 'context', 'file.js', 'typescript', ['/ctx.js']
     );
   });
+
+  it('should re-throw when OpenRouter is primary and no fallback is available', async () => {
+    mockConfig.cerebrasApiKey = '';
+    mockCallOpenRouter.mockRejectedValue(new Error('OpenRouter failed'));
+
+    await expect(routeAPICall('test')).rejects.toThrow('OpenRouter failed');
+  });
+
+  it('should not attempt fallback when OpenRouter is the only provider', async () => {
+    mockConfig.cerebrasApiKey = '';
+    mockCallOpenRouter.mockRejectedValue(new Error('OpenRouter failed'));
+
+    await expect(routeAPICall('test')).rejects.toThrow();
+    expect(mockCallCerebras).not.toHaveBeenCalled();
+  });
 });
 
 describe('getAvailableProviders', () => {

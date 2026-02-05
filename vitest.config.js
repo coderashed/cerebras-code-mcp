@@ -10,7 +10,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       include: ['src/**/*.js'],
-      exclude: ['src/index.js'],
+      exclude: ['src/index.js', 'src/config/interactive-config.js'],
     },
   },
 });

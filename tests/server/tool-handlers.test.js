@@ -136,4 +136,20 @@ describe('handleWriteTool', () => {
 
     expect(result.content).toHaveLength(0);
   });
+
+  it('should return empty content when existing file is empty', async () => {
+    vi.mocked(readFileContent).mockResolvedValue('');
+    vi.mocked(routeAPICall).mockResolvedValue('new code');
+    vi.mocked(writeFileContent).mockResolvedValue(true);
+
+    const result = await handleWriteTool({
+      file_path: '/path/empty.js',
+      prompt: 'write code'
+    });
+
+    expect(writeFileContent).toHaveBeenCalledWith('/path/empty.js', 'new code');
+    expect(formatEditResponse).not.toHaveBeenCalled();
+    expect(formatCreateResponse).not.toHaveBeenCalled();
+    expect(result.content).toHaveLength(0);
+  });
 });

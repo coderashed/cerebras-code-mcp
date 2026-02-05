@@ -268,4 +268,91 @@ describe('callCerebras', () => {
     const requestData = JSON.parse(mockReq.write.mock.calls[0][0]);
     expect(requestData.messages[0].content).toContain('typescript');
   });
+
+  it('should log warning and continue when context file read fails', async () => {
+    vi.mocked(readFileContent).mockImplementation((filePath) => {
+      if (filePath === '/bad/context.js') return Promise.reject(new Error('ENOENT: no such file'));
+      return Promise.resolve(null);
+    });
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const promise = callCerebras('test', '', 'output.js', null, ['/bad/context.js']);
+
+    await vi.waitFor(() => {
+      expect(mockReq._callback).toBeDefined();
+    });
+
+    const res = createMockResponse(200);
+    mockReq._callback(res);
+    res.emit('data', JSON.stringify({
+      choices: [{ message: { content: 'code' } }]
+    }));
+    res.emit('end');
+
+    await promise;
+
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Warning: Could not read context file'));
+    consoleSpy.mockRestore();
+  });
+
+  it('should skip context files section when all context files match output file', async () => {
+    vi.mocked(readFileContent).mockResolvedValue(null);
+    const promise = callCerebras('test', '', '/abs/output.js', null, ['/abs/output.js']);
+
+    await vi.waitFor(() => {
+      expect(mockReq._callback).toBeDefined();
+    });
+
+    const res = createMockResponse(200);
+    mockReq._callback(res);
+    res.emit('data', JSON.stringify({
+      choices: [{ message: { content: 'code' } }]
+    }));
+    res.emit('end');
+
+    await promise;
+
+    const requestData = JSON.parse(mockReq.write.mock.calls[0][0]);
+    expect(requestData.messages[1].content).not.toContain('Context Files:');
+  });
+
+  it('should skip context file with empty content', async () => {
+    vi.mocked(readFileContent).mockImplementation((filePath) => {
+      if (filePath === '/empty/context.js') return Promise.resolve('');
+      return Promise.resolve(null);
+    });
+    const promise = callCerebras('test', '', 'output.js', null, ['/empty/context.js']);
+
+    await vi.waitFor(() => {
+      expect(mockReq._callback).toBeDefined();
+    });
+
+    const res = createMockResponse(200);
+    mockReq._callback(res);
+    res.emit('data', JSON.stringify({
+      choices: [{ message: { content: 'code' } }]
+    }));
+    res.emit('end');
+
+    await promise;
+
+    const requestData = JSON.parse(mockReq.write.mock.calls[0][0]);
+    expect(requestData.messages[1].content).not.toContain('/empty/context.js');
+  });
+
+  it('should show Unknown error when API error has no message', async () => {
+    vi.mocked(readFileContent).mockResolvedValue(null);
+    const promise = callCerebras('test');
+
+    await vi.waitFor(() => {
+      expect(mockReq._callback).toBeDefined();
+    });
+
+    const res = createMockResponse(500);
+    mockReq._callback(res);
+    res.emit('data', JSON.stringify({}));
+    res.emit('end');
+
+    await expect(promise).rejects.toThrow('Unknown error');
+  });
 });

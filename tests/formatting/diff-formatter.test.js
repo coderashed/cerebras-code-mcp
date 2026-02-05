@@ -41,6 +41,13 @@ describe('generateDiff', () => {
     expect(result).toContain('+ x');
     expect(result).toContain('- b');
   });
+
+  it('should show removed lines when new content is shorter', () => {
+    const result = generateDiff('a\nb\nc', 'a');
+    expect(result).toContain('- b');
+    expect(result).toContain('- c');
+    expect(result).not.toContain('+');
+  });
 });
 
 describe('generateGitDiff', () => {
