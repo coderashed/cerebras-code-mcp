@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileContent, writeFileContent, getLanguageFromFile } from '../../src/utils/file-utils.js';
 import fs from 'fs/promises';
 import path from 'path';

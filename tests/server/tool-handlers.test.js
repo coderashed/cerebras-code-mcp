@@ -24,7 +24,7 @@ vi.mock('../../src/formatting/response-formatter.js', () => ({
 }));
 
 import { readFileContent, writeFileContent } from '../../src/utils/file-utils.js';
-import { cleanCodeResponse } from '../../src/utils/code-cleaner.js';
+// cleanCodeResponse is mocked but not directly referenced in tests
 import { routeAPICall } from '../../src/api/router/router.js';
 import { formatEditResponse, formatCreateResponse } from '../../src/formatting/response-formatter.js';
 
@@ -76,7 +76,7 @@ describe('handleWriteTool', () => {
       text: 'Updated file'
     });
 
-    const result = await handleWriteTool({
+    await handleWriteTool({
       file_path: '/path/existing.js',
       prompt: 'update the function'
     });
