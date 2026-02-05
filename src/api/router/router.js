@@ -1,10 +1,11 @@
 import { callCerebras } from '../cerebras.js';
 import { callOpenRouter } from '../openrouter.js';
 import { config } from '../../config/constants.js';
+import { cerebrasRateLimiter, openRouterRateLimiter } from '../rate-limiter.js';
 
 /**
  * Main API router that handles routing to different AI providers
- * 
+ *
  * Benefits:
  * - Centralized provider selection and fallback logic
  * - Easy to add new providers without changing existing code
@@ -12,35 +13,35 @@ import { config } from '../../config/constants.js';
  * - Consistent API interface for all providers
  * - Clean separation of concerns
  */
-export async function routeAPICall(prompt, context = "", outputFile = "", language = null, contextFiles = []) {
-  // Determine which provider to use based on configuration and availability
+
+/**
+ * Route API call with rate limiting and automatic retries
+ */
+export async function routeAPICall(prompt, context = "", outputFile = "", language = null, contextFiles = [], existingContent = null) {
   const provider = determineProvider();
-  
+
   try {
     switch (provider) {
       case 'cerebras':
-        return await callCerebras(prompt, context, outputFile, language, contextFiles);
-      
+        return await cerebrasRateLimiter.execute(() => callCerebras(prompt, context, outputFile, language, contextFiles, existingContent));
+
       case 'openrouter':
-        return await callOpenRouter(prompt, context, outputFile, language, contextFiles);
-      
+        return await openRouterRateLimiter.execute(() => callOpenRouter(prompt, context, outputFile, language, contextFiles, existingContent));
+
       default:
         throw new Error(`Unknown provider: ${provider}`);
     }
   } catch (error) {
-    // If primary provider fails, try fallback
     const fallbackProvider = getFallbackProvider(provider);
     if (fallbackProvider && fallbackProvider !== provider) {
-      console.log(`Primary provider ${provider} failed, trying fallback ${fallbackProvider}...`);
-      
       try {
         switch (fallbackProvider) {
           case 'cerebras':
-            return await callCerebras(prompt, context, outputFile, language, contextFiles);
-          
+            return await cerebrasRateLimiter.execute(() => callCerebras(prompt, context, outputFile, language, contextFiles, existingContent));
+
           case 'openrouter':
-            return await callOpenRouter(prompt, context, outputFile, language, contextFiles);
-          
+            return await openRouterRateLimiter.execute(() => callOpenRouter(prompt, context, outputFile, language, contextFiles, existingContent));
+
           default:
             throw new Error(`Unknown fallback provider: ${fallbackProvider}`);
         }

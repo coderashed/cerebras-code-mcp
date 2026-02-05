@@ -1,22 +1,23 @@
 import https from 'https';
 import path from 'path';
+import { RateLimitError } from './rate-limiter.js';
 import { config } from '../config/constants.js';
 import { readFileContent, getLanguageFromFile } from '../utils/file-utils.js';
 import { cleanCodeResponse } from '../utils/code-cleaner.js';
 
 // Call OpenRouter API as fallback to Cerebras
-export async function callOpenRouter(prompt, context = "", outputFile = "", language = null, contextFiles = []) {
+export async function callOpenRouter(prompt, context = "", outputFile = "", language = null, contextFiles = [], existingContent = null) {
   try {
     // Check if OpenRouter API key is available
     if (!config.openRouterApiKey) {
       throw new Error("No OpenRouter API key available. Set OPENROUTER_API_KEY environment variable.");
     }
-    
+
     // Determine language from file extension or explicit parameter
     const detectedLanguage = getLanguageFromFile(outputFile, language);
-    
+
     let fullPrompt = `Generate ${detectedLanguage} code for: ${prompt}`;
-    
+
     // Add context files if provided (excluding the output file itself)
     if (contextFiles && contextFiles.length > 0) {
       // Filter out the output file from context files to avoid duplication
@@ -25,30 +26,36 @@ export async function callOpenRouter(prompt, context = "", outputFile = "", lang
         const resolvedOutput = path.resolve(outputFile);
         return resolvedContext !== resolvedOutput;
       });
-      
+
       if (filteredContextFiles.length > 0) {
-        let contextContent = "Context Files:\n";
-        for (const contextFile of filteredContextFiles) {
-          try {
-            const content = await readFileContent(contextFile);
-            if (content) {
-              const contextLang = getLanguageFromFile(contextFile);
-              contextContent += `\nFile: ${contextFile}\n\`\`\`${contextLang}\n${content}\n\`\`\`\n`;
+        // Read all context files in parallel using Promise.all
+        const contextResults = await Promise.all(
+          filteredContextFiles.map(async (contextFile) => {
+            try {
+              const content = await readFileContent(contextFile);
+              if (content) {
+                const contextLang = getLanguageFromFile(contextFile);
+                return `\nFile: ${contextFile}\n\`\`\`${contextLang}\n${content}\n\`\`\`\n`;
+              }
+            } catch (error) {
+              console.error(`Warning: Could not read context file ${contextFile}: ${error.message}`);
             }
-          } catch (error) {
-            console.error(`Warning: Could not read context file ${contextFile}: ${error.message}`);
-          }
+            return null;
+          })
+        );
+
+        const validContexts = contextResults.filter(Boolean);
+        if (validContexts.length > 0) {
+          fullPrompt = "Context Files:\n" + validContexts.join('') + "\n" + fullPrompt;
         }
-        fullPrompt = contextContent + "\n" + fullPrompt;
       }
     }
-    
+
     if (context) {
       fullPrompt = `Context: ${context}\n\n${fullPrompt}`;
     }
-    
-    // Read existing file content if it exists (for modification)
-    const existingContent = await readFileContent(outputFile);
+
+    // Use existing file content if provided (avoids redundant file read)
     if (existingContent) {
       fullPrompt = `Existing file content:\n\`\`\`${detectedLanguage}\n${existingContent}\n\`\`\`\n\n${fullPrompt}`;
     }
@@ -70,9 +77,10 @@ export async function callOpenRouter(prompt, context = "", outputFile = "", lang
         allow_fallbacks: false
       },
       temperature: config.temperature,
+      ...(config.topP !== undefined && { top_p: config.topP }),
       stream: false
     };
-    
+
     // Only add max_tokens if explicitly set
     if (config.maxTokens) {
       requestData.max_tokens = config.maxTokens;
@@ -106,7 +114,10 @@ export async function callOpenRouter(prompt, context = "", outputFile = "", lang
           try {
             const response = JSON.parse(data);
             
-            if (res.statusCode === 200 && response.choices && response.choices[0]) {
+            if (res.statusCode === 429) {
+              const retryAfter = res.headers['retry-after'] ? parseInt(res.headers['retry-after']) : undefined;
+              reject(new RateLimitError('OpenRouter rate limit exceeded', 429, retryAfter));
+            } else if (res.statusCode === 200 && response.choices && response.choices[0]) {
               const rawContent = response.choices[0].message.content;
               const cleanedContent = cleanCodeResponse(rawContent);
               resolve(cleanedContent);
@@ -122,7 +133,13 @@ export async function callOpenRouter(prompt, context = "", outputFile = "", lang
       req.on('error', (error) => {
         reject(new Error(`Request failed: ${error.message}`));
       });
-      
+
+      // Add timeout to prevent hanging requests
+      req.setTimeout(30000, () => {
+        req.destroy();
+        reject(new Error('Request timeout after 30 seconds'));
+      });
+
       req.write(postData);
       req.end();
     });

@@ -1,53 +1,54 @@
 import https from 'https';
 import path from 'path';
+import { RateLimitError } from './rate-limiter.js';
 import { config } from '../config/constants.js';
 import { readFileContent, getLanguageFromFile } from '../utils/file-utils.js';
 import { cleanCodeResponse } from '../utils/code-cleaner.js';
-// Call Cerebras Code API - generates only code, no explanations
-export async function callCerebras(prompt, context = "", outputFile = "", language = null, contextFiles = []) {
+
+export async function callCerebras(prompt, context = "", outputFile = "", language = null, contextFiles = [], existingContent = null) {
   try {
-    // Check if Cerebras API key is available
     if (!config.cerebrasApiKey) {
       throw new Error("No Cerebras API key found. Please set CEREBRAS_API_KEY environment variable.");
     }
-    
-    // Determine language from file extension or explicit parameter
+
     const detectedLanguage = getLanguageFromFile(outputFile, language);
-    
+
     let fullPrompt = `Generate ${detectedLanguage} code for: ${prompt}`;
-    
-    // Add context files if provided (excluding the output file itself)
+
     if (contextFiles && contextFiles.length > 0) {
-      // Filter out the output file from context files to avoid duplication
       const filteredContextFiles = contextFiles.filter(file => {
         const resolvedContext = path.resolve(file);
         const resolvedOutput = path.resolve(outputFile);
         return resolvedContext !== resolvedOutput;
       });
-      
+
       if (filteredContextFiles.length > 0) {
-        let contextContent = "Context Files:\n";
-        for (const contextFile of filteredContextFiles) {
-          try {
-            const content = await readFileContent(contextFile);
-            if (content) {
-              const contextLang = getLanguageFromFile(contextFile);
-              contextContent += `\nFile: ${contextFile}\n\`\`\`${contextLang}\n${content}\n\`\`\`\n`;
+        const contextResults = await Promise.all(
+          filteredContextFiles.map(async (contextFile) => {
+            try {
+              const content = await readFileContent(contextFile);
+              if (content) {
+                const contextLang = getLanguageFromFile(contextFile);
+                return `\nFile: ${contextFile}\n\`\`\`${contextLang}\n${content}\n\`\`\`\n`;
+              }
+            } catch (error) {
+              console.error(`Warning: Could not read context file ${contextFile}: ${error.message}`);
             }
-          } catch (error) {
-            console.error(`Warning: Could not read context file ${contextFile}: ${error.message}`);
-          }
+            return null;
+          })
+        );
+
+        const validContexts = contextResults.filter(Boolean);
+        if (validContexts.length > 0) {
+          fullPrompt = "Context Files:\n" + validContexts.join('') + "\n" + fullPrompt;
         }
-        fullPrompt = contextContent + "\n" + fullPrompt;
       }
     }
-    
+
     if (context) {
       fullPrompt = `Context: ${context}\n\n${fullPrompt}`;
     }
-    
-    // Read existing file content if it exists (for modification)
-    const existingContent = await readFileContent(outputFile);
+
     if (existingContent) {
       fullPrompt = `Existing file content:\n\`\`\`${detectedLanguage}\n${existingContent}\n\`\`\`\n\n${fullPrompt}`;
     }
@@ -65,10 +66,11 @@ export async function callCerebras(prompt, context = "", outputFile = "", langua
         }
       ],
       temperature: config.temperature,
+      ...(config.topP !== undefined && { top_p: config.topP }),
+      clear_thinking: config.clearThinking,
       stream: false
     };
-    
-    // Only add max_tokens if explicitly set
+
     if (config.maxTokens) {
       requestData.max_tokens = config.maxTokens;
     }
@@ -100,6 +102,12 @@ export async function callCerebras(prompt, context = "", outputFile = "", langua
             try {
               const response = JSON.parse(data);
               
+              if (res.statusCode === 429) {
+                const retryAfter = res.headers['retry-after'] ? parseInt(res.headers['retry-after']) : undefined;
+                reject(new RateLimitError(`Cerebras rate limit exceeded`, 429, retryAfter));
+                return;
+              }
+              
               if (res.statusCode === 200 && response.choices && response.choices[0]) {
                 const rawContent = response.choices[0].message.content;
                 const cleanedContent = cleanCodeResponse(rawContent);
@@ -117,7 +125,6 @@ export async function callCerebras(prompt, context = "", outputFile = "", langua
           reject(new Error(`Request failed: ${error.message}`));
         });
         
-        // Add timeout to prevent hanging requests
         req.setTimeout(30000, () => {
           req.destroy();
           reject(new Error('Request timeout after 30 seconds'));
@@ -127,11 +134,12 @@ export async function callCerebras(prompt, context = "", outputFile = "", langua
         req.end();
       });
     } catch (error) {
-      // Re-throw the error for the router to handle fallback logic
+      if (error instanceof RateLimitError) {
+        throw error;
+      }
       throw new Error(`Cerebras API call failed: ${error.message}`);
     }
   } catch (error) {
-    // Re-throw any setup errors for the router to handle fallback logic
     throw error;
   }
 }

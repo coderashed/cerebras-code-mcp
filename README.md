@@ -37,13 +37,96 @@ If you're using Cursor, it will ask you to copy and paste a prompt into your Cur
 
 ## 4. Usage
 
-The MCP tool will appear as `write` in your tool list. It supports:
+### `write` Tool
+
+The `write` tool handles single file operations:
 
 - **Natural language prompts**: Just describe what you want in plain English
 - **Context files**: Include multiple files as context for better code understanding
 - **Visual diffs**: See changes with Git-style diffs
 
-Example usage:
+Example:
 ```
-Create a REST API with Express.js that handles user authentication
+write({
+  file_path: "/path/to/api.ts",
+  prompt: "Create a REST API with Express.js that handles user authentication",
+  context_files: ["/path/to/types.ts"]  // optional
+})
 ```
+
+### `batch_write` Tool
+
+The `batch_write` tool executes multiple file operations in parallel using worker threads. It supports two modes:
+
+#### Auto Mode (Recommended)
+
+Just describe what you want to build. The planner automatically determines what files to create:
+
+```
+batch_write({
+  prompt: "Create a user authentication module with login, logout, and session management in src/auth/",
+  shared_context: "Use TypeScript, functional patterns, include JSDoc comments",
+  shared_context_files: ["/path/to/existing/types.ts"]
+})
+```
+
+The planner will:
+1. Analyze your prompt
+2. Determine what files need to be created (e.g., `login.ts`, `logout.ts`, `session.ts`)
+3. Generate detailed prompts for each file
+4. Execute all file operations in parallel
+
+#### Manual Mode
+
+For explicit control, provide an `operations` array:
+
+```
+batch_write({
+  shared_context: "Use TypeScript with strict mode",
+  operations: [
+    { file_path: "src/api.ts", prompt: "Create the API client" },
+    { file_path: "src/types.ts", prompt: "Create type definitions" },
+    { file_path: "src/utils.ts", prompt: "Create helper utilities" }
+  ]
+})
+```
+
+#### Shared Context
+
+Both modes support shared context that applies to all operations:
+
+- `shared_context`: Text instructions (style guidelines, patterns, standards)
+- `shared_context_files`: Reference files that all operations can see
+
+This ensures consistency across all generated files.
+
+## Configuration
+
+### Environment Variables
+
+#### API Keys
+
+| Variable | Description |
+|----------|-------------|
+| `CEREBRAS_API_KEY` | Your Cerebras API key (required) |
+| `OPENROUTER_API_KEY` | OpenRouter API key for fallback (optional) |
+
+#### Model Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CEREBRAS_MODEL` | `zai-glm-4.7` | Model to use |
+| `CEREBRAS_MAX_TOKENS` | (none) | Max tokens for response |
+| `CEREBRAS_TEMPERATURE` | `0.1` | Temperature for generation |
+
+#### Rate Limiting
+
+The server uses a sliding window rate limiter to handle API rate limits gracefully. Requests are queued and retried automatically on 429 errors.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RATE_LIMIT_WINDOW_MS` | `60000` | Sliding window size in ms (60s) |
+| `RATE_LIMIT_MAX_REQUESTS` | `30` | Max requests per window |
+| `RATE_LIMIT_MAX_RETRIES` | `3` | Retry attempts on rate limit |
+| `RATE_LIMIT_BASE_DELAY_MS` | `1000` | Base delay for exponential backoff |
+| `MAX_CONCURRENT_REQUESTS` | `3` | Max parallel requests in batch operations |

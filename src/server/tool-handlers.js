@@ -1,85 +1,100 @@
 import path from 'path';
-import { debugLog } from '../config/constants.js';
 import { readFileContent, writeFileContent } from '../utils/file-utils.js';
-import { cleanCodeResponse } from '../utils/code-cleaner.js';
 import { routeAPICall } from '../api/router/router.js';
 import { formatEditResponse, formatCreateResponse } from '../formatting/response-formatter.js';
+import { spawnAgentBatch } from './agent-spawner.js';
+import { planBatchOperation } from './planner.js';
 
 // Tool handler for the write tool
 export async function handleWriteTool(args) {
   try {
-    await debugLog('=== MCP REQUEST DEBUG ===');
-    await debugLog(`Tool called: write`);
-    await debugLog(`Arguments: ${JSON.stringify(args, null, 2)}`);
-    await debugLog('========================');
-    
-    const { 
+    const {
       file_path,
-      prompt, 
+      prompt,
       context_files = []
     } = args;
-    
+
     if (!prompt) {
       throw new Error("Prompt is required for write tool");
     }
-    
+
     if (!file_path) {
       throw new Error("file_path is required for write tool");
     }
-    
+
     // Check if file exists to determine operation type
     const existingContent = await readFileContent(file_path);
     const isEdit = existingContent !== null;
-    
-    await debugLog('=== FILE OPERATION DEBUG ===');
-    await debugLog(`File path: ${file_path}`);
-    await debugLog(`File exists: ${isEdit}`);
-    await debugLog(`Existing content length: ${existingContent ? existingContent.length : 0}`);
-    await debugLog('============================');
-    
-    // Route API call to appropriate provider to generate/modify code with context files
-    const result = await routeAPICall(prompt, "", file_path, null, context_files);
-    
-    // Clean the AI response to remove markdown formatting
-    const cleanResult = cleanCodeResponse(result);
 
-    // Write the cleaned result to the file
-    await writeFileContent(file_path, cleanResult);
+    // Route API call to appropriate provider to generate/modify code with context files
+    // Pass existingContent to avoid redundant file reads in the API layer
+    // Result is already cleaned by the API layer
+    const result = await routeAPICall(prompt, "", file_path, null, context_files, existingContent);
+
+    // Write the result to the file
+    await writeFileContent(file_path, result);
 
     // Format the response based on operation type
     let responseContent = [];
     const fileName = path.basename(file_path);
 
     if (isEdit && existingContent) {
-      // Clean the existing content too for consistent comparison
-      const cleanExistingContent = cleanCodeResponse(existingContent);
-      const editResponse = formatEditResponse(fileName, cleanExistingContent, cleanResult, file_path);
+      const editResponse = formatEditResponse(fileName, existingContent, result, file_path);
       if (editResponse) {
         responseContent.push(editResponse);
       }
     } else if (!isEdit) {
-      const createResponse = formatCreateResponse(fileName, cleanResult, file_path);
+      const createResponse = formatCreateResponse(fileName, result, file_path);
       responseContent.push(createResponse);
     }
-    
-    const response = {
+
+    return {
       content: responseContent
     };
-    
-    // Log the full response for debugging
-    await debugLog('=== MCP RESPONSE DEBUG ===');
-    await debugLog('Response type: Standard text diff');
-    await debugLog(`Number of content items: ${responseContent.length}`);
-    await debugLog(`Response structure: ${JSON.stringify(response, null, 2)}`);
-    await debugLog('=========================');
-    
-    return response;
   } catch (error) {
-    await debugLog('=== MCP ERROR DEBUG ===');
-    await debugLog(`Error occurred: ${error.message}`);
-    await debugLog('=======================');
-    
     // Return a standard text error if something goes wrong
+    return {
+      content: [{
+        type: "text",
+        text: `Error in cerebras-code server: ${error.message}`
+      }]
+    };
+  }
+}
+
+export async function handleBatchWriteTool(args) {
+  try {
+    const { prompt, shared_context, shared_context_files, operations } = args;
+
+    let plannedOperations;
+
+    // If operations provided directly, use them (manual mode)
+    // Otherwise, use the planner to infer operations from the prompt (auto mode)
+    if (operations && Array.isArray(operations) && operations.length > 0) {
+      plannedOperations = operations;
+    } else if (prompt) {
+      // Use planner to break down the task
+      plannedOperations = await planBatchOperation(prompt, shared_context, shared_context_files);
+    } else {
+      throw new Error("Either 'prompt' or 'operations' must be provided");
+    }
+
+    if (!plannedOperations || plannedOperations.length === 0) {
+      throw new Error("No operations to execute");
+    }
+
+    const result = await spawnAgentBatch(plannedOperations, shared_context, shared_context_files);
+
+    // Prepend planning info to the response
+    const planSummary = {
+      type: "text",
+      text: `\x1b[36m◆\x1b[0m Planned \x1b[1m${plannedOperations.length}\x1b[0m file(s): ${plannedOperations.map(op => path.basename(op.file_path)).join(', ')}`
+    };
+
+    return {
+      content: [planSummary, ...result.content]
+    };
+  } catch (error) {
     return {
       content: [{
         type: "text",

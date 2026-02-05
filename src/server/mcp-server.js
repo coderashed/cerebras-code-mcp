@@ -1,7 +1,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { handleWriteTool } from './tool-handlers.js';
+import { handleWriteTool, handleBatchWriteTool } from './tool-handlers.js';
 
 // Create MCP server with enhanced auto-instructions
 export const server = new Server({
@@ -71,6 +71,62 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ["file_path", "prompt"]
         }
+      },
+      {
+        name: "batch_write",
+        description: "Execute multiple file operations in parallel using worker threads. Supports two modes:\n\n" +
+          "**AUTO MODE (Recommended)**: Provide a high-level prompt describing what you want to build. The planner automatically determines what files to create and generates detailed prompts for each.\n\n" +
+          "**MANUAL MODE**: Provide an explicit 'operations' array with file_path and prompt for each file.\n\n" +
+          "Features:\n" +
+          "- Parallel execution via worker threads\n" +
+          "- Shared context (text and/or files) applied to all operations\n" +
+          "- Automatic file path inference from task description\n" +
+          "- Each worker gets the shared context + its specific prompt",
+        inputSchema: {
+          type: "object",
+          properties: {
+            prompt: {
+              type: "string",
+              description: "AUTO MODE: High-level description of what to build. The planner will analyze this and determine what files to create. Example: 'Create a user authentication module with login, logout, and session management in src/auth/'"
+            },
+            shared_context: {
+              type: "string",
+              description: "OPTIONAL: Shared instructions that apply to all operations. Use for style guidelines, architectural patterns, coding standards. Example: 'Use TypeScript, functional patterns, and include JSDoc comments'"
+            },
+            shared_context_files: {
+              type: "array",
+              items: {
+                type: "string"
+              },
+              description: "OPTIONAL: Array of file paths that all operations should reference. These files provide context for maintaining consistency across generated files."
+            },
+            operations: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  file_path: {
+                    type: "string",
+                    description: "Absolute path to the file to create or modify."
+                  },
+                  prompt: {
+                    type: "string",
+                    description: "Detailed prompt for this specific file."
+                  },
+                  context_files: {
+                    type: "array",
+                    items: {
+                      type: "string"
+                    },
+                    description: "OPTIONAL: Additional context files specific to this operation."
+                  }
+                },
+                required: ["file_path", "prompt"]
+              },
+              description: "MANUAL MODE: Explicit array of operations. If provided, the planner is skipped."
+            }
+          }
+        }
       }
     ]
   };
@@ -79,6 +135,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === "write") {
     return await handleWriteTool(request.params.arguments);
+  } else if (request.params.name === "batch_write") {
+    return await handleBatchWriteTool(request.params.arguments);
   } else {
     throw new Error(`Unknown tool: ${request.params.name}`);
   }

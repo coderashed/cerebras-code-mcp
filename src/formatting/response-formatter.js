@@ -1,27 +1,19 @@
 import { createPatch } from 'diff';
-import path from 'path';
-import { syntaxHighlight } from './syntax-highlighter.js';
-import { getLanguageFromFile } from '../utils/file-utils.js';
 
 export function formatEditResponse(fileName, existingContent, newContent, filePath) {
-  const language = getLanguageFromFile(filePath);
-  
-  const oldLines = existingContent.split('\n');
-  const newLines = newContent.split('\n');
-  
   // Use the diff library to get a proper diff
   const patch = createPatch(fileName, existingContent, newContent);
   const patchLines = patch.split('\n');
-  
+
   // Count additions and removals
   let additions = 0;
   let removals = 0;
   let formattedDiff = [];
-  
+
   // Parse the patch to extract changes and line numbers
   let lineNumber = 0;
   let inHunk = false;
-  
+
   for (const line of patchLines) {
     if (line.startsWith('@@')) {
       // Extract starting line number from hunk header
@@ -34,13 +26,9 @@ export function formatEditResponse(fileName, existingContent, newContent, filePa
       if (line.startsWith('+') && !line.startsWith('+++')) {
         additions++;
         const codeLine = line.substring(1);
-        let highlighted = codeLine;
-        if (['javascript', 'python', 'html', 'css', 'typescript'].includes(language)) {
-          highlighted = syntaxHighlight(codeLine, language === 'typescript' ? 'javascript' : language);
-        }
-        // Handle empty lines properly - use non-breaking space for empty lines  
-        if (highlighted.trim()) {
-          formattedDiff.push(`    ${String(lineNumber).padStart(3)} \x1b[32m+\x1b[0m ${highlighted}`);
+        // Handle empty lines properly - use non-breaking space for empty lines
+        if (codeLine.trim()) {
+          formattedDiff.push(`    ${String(lineNumber).padStart(3)} \x1b[32m+\x1b[0m ${codeLine}`);
         } else {
           formattedDiff.push(`    ${String(lineNumber).padStart(3)} \x1b[32m+\x1b[0m \u00A0`);
         }
@@ -48,27 +36,19 @@ export function formatEditResponse(fileName, existingContent, newContent, filePa
       } else if (line.startsWith('-') && !line.startsWith('---')) {
         removals++;
         const codeLine = line.substring(1);
-        let highlighted = codeLine;
-        if (['javascript', 'python', 'html', 'css', 'typescript'].includes(language)) {
-          highlighted = syntaxHighlight(codeLine, language === 'typescript' ? 'javascript' : language);
-        }
-        // Handle empty lines properly - use non-breaking space for empty lines  
-        if (highlighted.trim()) {
-          formattedDiff.push(`    ${String(lineNumber).padStart(3)} \x1b[31m-\x1b[0m ${highlighted}`);
+        // Handle empty lines properly - use non-breaking space for empty lines
+        if (codeLine.trim()) {
+          formattedDiff.push(`    ${String(lineNumber).padStart(3)} \x1b[31m-\x1b[0m ${codeLine}`);
         } else {
           formattedDiff.push(`    ${String(lineNumber).padStart(3)} \x1b[31m-\x1b[0m \u00A0`);
         }
         // Don't increment line number for removals
       } else if (line.startsWith(' ') || line === '') {
-        // Context line (starts with space) - apply syntax highlighting
+        // Context line (starts with space)
         const contextLine = line.startsWith(' ') ? line.substring(1) : line;
-        let highlighted = contextLine;
-        if (['javascript', 'python', 'html', 'css', 'typescript'].includes(language)) {
-          highlighted = syntaxHighlight(contextLine, language === 'typescript' ? 'javascript' : language);
-        }
-        // Handle empty lines properly - maintain alignment with +/- symbols  
-        if (highlighted.trim()) {
-          formattedDiff.push(`    ${String(lineNumber).padStart(3)}   ${highlighted}`);
+        // Handle empty lines properly - maintain alignment with +/- symbols
+        if (contextLine.trim()) {
+          formattedDiff.push(`    ${String(lineNumber).padStart(3)}   ${contextLine}`);
         } else {
           // Empty context line - use non-breaking space to prevent trimming
           formattedDiff.push(`    ${String(lineNumber).padStart(3)}   \u00A0`);
@@ -91,17 +71,9 @@ export function formatEditResponse(fileName, existingContent, newContent, filePa
 }
 
 export function formatCreateResponse(fileName, content, filePath) {
-  const language = getLanguageFromFile(filePath);
-  
-  // Apply syntax highlighting if supported
-  let highlightedCode = content;
-  if (['javascript', 'python', 'html', 'css', 'typescript'].includes(language)) {
-    highlightedCode = syntaxHighlight(content, language === 'typescript' ? 'javascript' : language);
-  }
-  
-  const lines = highlightedCode.split('\n');
+  const lines = content.split('\n');
   const lineCount = lines.length;
-  
+
   // Format the lines with line numbers
   let formattedContent = [];
   for (let i = 0; i < lines.length; i++) {
