@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# AI/Claude directories
+.ai/
+.claude/
+
+# Build artifacts
+dist/
+coverage/
+
+# Cache
+.pytest_cache/
+
+# Lock files
+package-lock.json
+
+# Logs
+*.log
