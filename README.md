@@ -31,7 +31,7 @@ You can set this key in your MCP settings under OPENROUTER_API_KEY, and it will 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `CEREBRAS_API_KEY` | Your Cerebras API key (required) | - |
-| `CEREBRAS_MODEL` | Cerebras model to use | `zai-glm-4.6` |
+| `CEREBRAS_MODEL` | Cerebras model to use | `zai-glm-4.7` |
 | `OPENROUTER_API_KEY` | OpenRouter API key (optional fallback) | - |
 | `OPENROUTER_MODEL` | OpenRouter model to use | `qwen/qwen3-coder` |
 
