@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('fs/promises', () => ({
-  default: {
-    readFile: vi.fn()
-  }
+vi.mock('fs', () => ({
+  readFileSync: vi.fn()
 }));
 
 import { 
@@ -15,7 +13,7 @@ import {
 
 describe('session-context', () => {
   beforeEach(() => {
-    setSessionContext({ shared_context: null, shared_context_files: [] });
+    setSessionContext({ shared_context: null, shared_context_files: null });
   });
 
   describe('setSessionContext', () => {
@@ -43,6 +41,13 @@ describe('session-context', () => {
       setSessionContext({ shared_context_files: ['/file1.js', '/file2.js'], append: true });
       const result = getSessionContext();
       expect(result.shared_context_files).toEqual(['/file1.js', '/file2.js']);
+    });
+
+    it('should append to null shared_context_files', () => {
+      // session starts as null from beforeEach
+      setSessionContext({ shared_context_files: ['/file1.js'], append: true });
+      const result = getSessionContext();
+      expect(result.shared_context_files).toEqual(['/file1.js']);
     });
 
     it('should replace context when append is false', () => {
@@ -90,10 +95,11 @@ describe('session-context', () => {
       expect(result.shared_context_files).toEqual(['/session.js']);
     });
 
-    it('should return nullish defaults when nothing is set', () => {
+    it('should fall back to project config when session is null', () => {
+      // session is null from beforeEach, so should fall through to projectConfig defaults
       const result = resolveContext({});
       expect(result.shared_context).toBeNull();
-      expect(result.shared_context_files).toEqual([]);
+      expect(result.shared_context_files).toEqual([]); // from projectConfig default
     });
   });
 });

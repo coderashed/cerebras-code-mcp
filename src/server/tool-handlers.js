@@ -4,7 +4,7 @@ import { routeAPICall } from '../api/router/router.js';
 import { formatEditResponse, formatCreateResponse } from '../formatting/response-formatter.js';
 import { spawnAgentBatch } from './agent-spawner.js';
 import { planBatchOperation } from './planner.js';
-import { resolveContext } from './session-context.js';
+import { resolveContextForFile } from './session-context.js';
 
 // Tool handler for the write tool
 export async function handleWriteTool(args) {
@@ -24,7 +24,7 @@ export async function handleWriteTool(args) {
     }
 
     // Resolve context from session/project config if not provided
-    const resolved = resolveContext({ shared_context_files: context_files.length > 0 ? context_files : undefined });
+    const resolved = resolveContextForFile(file_path, { shared_context_files: context_files.length > 0 ? context_files : undefined });
     const resolvedContextFiles = resolved.shared_context_files;
 
     // Check if file exists to determine operation type
@@ -72,7 +72,7 @@ export async function handleBatchWriteTool(args) {
     const { prompt, shared_context, shared_context_files, operations } = args;
 
     // Resolve context from session/project config
-    const resolved = resolveContext({ shared_context, shared_context_files });
+    const resolved = resolveContextForFile(operations?.[0]?.file_path || '.', { shared_context, shared_context_files });
     const resolvedContext = resolved.shared_context;
     const resolvedContextFiles = resolved.shared_context_files;
 

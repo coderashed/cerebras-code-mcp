@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handleWriteTool, handleBatchWriteTool } from '../../src/server/tool-handlers.js';
 
-const mockResolveContext = vi.hoisted(() => vi.fn());
+const mockResolveContextForFile = vi.hoisted(() => vi.fn());
 
 vi.mock('../../src/server/session-context.js', () => ({
-  resolveContext: mockResolveContext
+  resolveContextForFile: mockResolveContextForFile
 }));
 
 vi.mock('../../src/utils/file-utils.js', () => ({
@@ -38,8 +38,8 @@ import { planBatchOperation } from '../../src/server/planner.js';
 describe('handleWriteTool', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveContext.mockReset();
-    mockResolveContext.mockImplementation((params = {}) => ({
+    mockResolveContextForFile.mockReset();
+    mockResolveContextForFile.mockImplementation((filePath, params = {}) => ({
       shared_context: params.shared_context ?? null,
       shared_context_files: params.shared_context_files ?? []
     }));
@@ -154,8 +154,8 @@ describe('handleWriteTool', () => {
 describe('handleBatchWriteTool', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveContext.mockReset();
-    mockResolveContext.mockImplementation((params = {}) => ({
+    mockResolveContextForFile.mockReset();
+    mockResolveContextForFile.mockImplementation((filePath, params = {}) => ({
       shared_context: params.shared_context ?? null,
       shared_context_files: params.shared_context_files ?? []
     }));
