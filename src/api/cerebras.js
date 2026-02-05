@@ -6,8 +6,7 @@ import { readFileContent, getLanguageFromFile, expandContextPaths } from '../uti
 import { cleanCodeResponse } from '../utils/code-cleaner.js';
 
 export async function callCerebras(prompt, context = "", outputFile = "", language = null, contextFiles = [], existingContent = null) {
-  try {
-    if (!config.cerebrasApiKey) {
+  if (!config.cerebrasApiKey) {
       throw new Error("No Cerebras API key found. Please set CEREBRAS_API_KEY environment variable.");
     }
 
@@ -142,7 +141,4 @@ export async function callCerebras(prompt, context = "", outputFile = "", langua
       }
       throw new Error(`Cerebras API call failed: ${error.message}`);
     }
-  } catch (error) {
-    throw error;
-  }
 }

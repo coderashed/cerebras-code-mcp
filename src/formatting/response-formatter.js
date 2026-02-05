@@ -1,6 +1,6 @@
 import { createPatch } from 'diff';
 
-export function formatEditResponse(fileName, existingContent, newContent, filePath) {
+export function formatEditResponse(fileName, existingContent, newContent, _filePath) {
   // Use the diff library to get a proper diff
   const patch = createPatch(fileName, existingContent, newContent);
   const patchLines = patch.split('\n');
@@ -8,7 +8,7 @@ export function formatEditResponse(fileName, existingContent, newContent, filePa
   // Count additions and removals
   let additions = 0;
   let removals = 0;
-  let formattedDiff = [];
+  const formattedDiff = [];
 
   // Parse the patch to extract changes and line numbers
   let lineNumber = 0;
@@ -70,7 +70,7 @@ export function formatEditResponse(fileName, existingContent, newContent, filePa
   return null;
 }
 
-export function formatCreateResponse(fileName, content, filePath) {
+export function formatCreateResponse(fileName, content, _filePath) {
   const lines = content.split('\n');
   const lineCount = lines.length;
 

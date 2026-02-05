@@ -122,7 +122,7 @@ export async function interactiveConfig() {
         try {
           const existingContent = await fs.readFile(configPath, 'utf-8');
           existingConfig = JSON.parse(existingContent);
-        } catch (error) {
+        } catch (_error) {
           // File doesn't exist or is invalid, start with empty config
           existingConfig = {};
         }
@@ -176,7 +176,7 @@ export async function interactiveConfig() {
         // Uninstall existing server to ensure clean installation
         try {
           execSync('claude mcp remove cerebras-code', { stdio: 'inherit' });
-        } catch (error) {
+        } catch (_error) {
           // Ignore if it fails (e.g., not installed)
         }
 
@@ -214,7 +214,7 @@ export async function interactiveConfig() {
           let existingContent = '';
           try {
             existingContent = await fs.readFile(claudeRulesPath, 'utf-8');
-          } catch (readError) {
+          } catch (_readError) {
             // File doesn't exist, which is fine.
           }
 
