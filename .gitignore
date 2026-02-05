@@ -52,6 +52,9 @@ jspm_packages/
 *.swo
 *~
 
+# Claude Code local config
+.claude/
+
 # OS generated files
 .DS_Store
 .DS_Store?
