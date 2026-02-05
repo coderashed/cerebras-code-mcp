@@ -4,6 +4,7 @@ import { routeAPICall } from '../api/router/router.js';
 import { formatEditResponse, formatCreateResponse } from '../formatting/response-formatter.js';
 import { spawnAgentBatch } from './agent-spawner.js';
 import { planBatchOperation } from './planner.js';
+import { resolveContext } from './session-context.js';
 
 // Tool handler for the write tool
 export async function handleWriteTool(args) {
@@ -22,6 +23,10 @@ export async function handleWriteTool(args) {
       throw new Error("file_path is required for write tool");
     }
 
+    // Resolve context from session/project config if not provided
+    const resolved = resolveContext({ shared_context_files: context_files.length > 0 ? context_files : undefined });
+    const resolvedContextFiles = resolved.shared_context_files;
+
     // Check if file exists to determine operation type
     const existingContent = await readFileContent(file_path);
     const isEdit = existingContent !== null;
@@ -29,13 +34,13 @@ export async function handleWriteTool(args) {
     // Route API call to appropriate provider to generate/modify code with context files
     // Pass existingContent to avoid redundant file reads in the API layer
     // Result is already cleaned by the API layer
-    const result = await routeAPICall(prompt, "", file_path, null, context_files, existingContent);
+    const result = await routeAPICall(prompt, "", file_path, null, resolvedContextFiles, existingContent);
 
     // Write the result to the file
     await writeFileContent(file_path, result);
 
     // Format the response based on operation type
-    let responseContent = [];
+    const responseContent = [];
     const fileName = path.basename(file_path);
 
     if (isEdit && existingContent) {
@@ -66,6 +71,11 @@ export async function handleBatchWriteTool(args) {
   try {
     const { prompt, shared_context, shared_context_files, operations } = args;
 
+    // Resolve context from session/project config
+    const resolved = resolveContext({ shared_context, shared_context_files });
+    const resolvedContext = resolved.shared_context;
+    const resolvedContextFiles = resolved.shared_context_files;
+
     let plannedOperations;
 
     // If operations provided directly, use them (manual mode)
@@ -74,7 +84,7 @@ export async function handleBatchWriteTool(args) {
       plannedOperations = operations;
     } else if (prompt) {
       // Use planner to break down the task
-      plannedOperations = await planBatchOperation(prompt, shared_context, shared_context_files);
+      plannedOperations = await planBatchOperation(prompt, resolvedContext, resolvedContextFiles);
     } else {
       throw new Error("Either 'prompt' or 'operations' must be provided");
     }
@@ -83,7 +93,7 @@ export async function handleBatchWriteTool(args) {
       throw new Error("No operations to execute");
     }
 
-    const result = await spawnAgentBatch(plannedOperations, shared_context, shared_context_files);
+    const result = await spawnAgentBatch(plannedOperations, resolvedContext, resolvedContextFiles);
 
     // Prepend planning info to the response
     const planSummary = {

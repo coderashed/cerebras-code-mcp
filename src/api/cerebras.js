@@ -2,7 +2,7 @@ import https from 'https';
 import path from 'path';
 import { RateLimitError } from './rate-limiter.js';
 import { config } from '../config/constants.js';
-import { readFileContent, getLanguageFromFile } from '../utils/file-utils.js';
+import { readFileContent, getLanguageFromFile, expandContextPaths } from '../utils/file-utils.js';
 import { cleanCodeResponse } from '../utils/code-cleaner.js';
 
 export async function callCerebras(prompt, context = "", outputFile = "", language = null, contextFiles = [], existingContent = null) {
@@ -16,7 +16,10 @@ export async function callCerebras(prompt, context = "", outputFile = "", langua
     let fullPrompt = `Generate ${detectedLanguage} code for: ${prompt}`;
 
     if (contextFiles && contextFiles.length > 0) {
-      const filteredContextFiles = contextFiles.filter(file => {
+      // Expand any directories to their files
+      const expandedContextFiles = await expandContextPaths(contextFiles);
+
+      const filteredContextFiles = expandedContextFiles.filter(file => {
         const resolvedContext = path.resolve(file);
         const resolvedOutput = path.resolve(outputFile);
         return resolvedContext !== resolvedOutput;

@@ -100,6 +100,38 @@ Both modes support shared context that applies to all operations:
 
 This ensures consistency across all generated files.
 
+### `set_context` Tool
+
+The `set_context` tool sets shared context for all subsequent `write` and `batch_write` calls in the current session. This avoids repeating the same context on every call.
+
+```
+set_context({
+  shared_context: "Use TypeScript, functional patterns, JSDoc comments",
+  shared_context_files: ["/path/to/types.ts", "/path/to/utils.ts"],
+  append: false  // true to add to existing context, false to replace
+})
+```
+
+Once set, all `write` and `batch_write` calls will use this context automatically.
+
+### Context Resolution
+
+Context is resolved in priority order:
+
+1. **Call parameters** - Context passed directly to `write`/`batch_write`
+2. **Session context** - Set via `set_context` tool
+3. **Project config** - From `.cerebras.json` in project root
+
+Example `.cerebras.json`:
+```json
+{
+  "shared_context": "Use TypeScript with strict mode. Follow functional patterns.",
+  "shared_context_files": ["src/types.ts", "src/constants.ts"]
+}
+```
+
+This allows project-level defaults that apply to all operations without any setup.
+
 ## Configuration
 
 ### Environment Variables

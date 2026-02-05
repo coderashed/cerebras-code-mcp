@@ -1,0 +1,4 @@
+{
+  "shared_context": "Follow the testing patterns documented in the coaching files.",
+  "shared_context_files": [".ai/glm-coaching"]
+}

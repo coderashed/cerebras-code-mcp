@@ -55,6 +55,7 @@ tests/
 │   ├── agent-spawner.test.js
 │   ├── mcp-server.test.js
 │   ├── planner.test.js
+│   ├── session-context.test.js
 │   ├── tool-handlers.test.js
 │   └── worker.test.js
 └── utils/

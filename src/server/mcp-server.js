@@ -2,6 +2,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { handleWriteTool, handleBatchWriteTool } from './tool-handlers.js';
+import { setSessionContext, getSessionContext } from './session-context.js';
 
 // Create MCP server with enhanced auto-instructions
 export const server = new Server({
@@ -127,6 +128,31 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             }
           }
         }
+      },
+      {
+        name: "set_context",
+        description: "Set shared context for all subsequent write/batch_write calls this session. " +
+          "This context persists until the session ends or is overwritten. " +
+          "Use this to avoid passing the same shared_context/shared_context_files on every call.\n\n" +
+          "Priority order: call params > session state > project config (.cerebras.json)",
+        inputSchema: {
+          type: "object",
+          properties: {
+            shared_context: {
+              type: "string",
+              description: "Text instructions applied to all subsequent operations. Example: 'Use TypeScript, functional patterns, JSDoc comments'"
+            },
+            shared_context_files: {
+              type: "array",
+              items: { type: "string" },
+              description: "File paths to include as context for all subsequent operations."
+            },
+            append: {
+              type: "boolean",
+              description: "If true, append to existing context instead of replacing (default: false)"
+            }
+          }
+        }
       }
     ]
   };
@@ -137,6 +163,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return await handleWriteTool(request.params.arguments);
   } else if (request.params.name === "batch_write") {
     return await handleBatchWriteTool(request.params.arguments);
+  } else if (request.params.name === "set_context") {
+    const { shared_context, shared_context_files, append } = request.params.arguments || {};
+    setSessionContext({ shared_context, shared_context_files, append });
+    const current = getSessionContext();
+    return {
+      content: [{
+        type: "text",
+        text: `Session context updated.\n` +
+          `shared_context: ${current.shared_context ? `"${current.shared_context.substring(0, 100)}${current.shared_context.length > 100 ? '...' : ''}"` : 'null'}\n` +
+          `shared_context_files: [${current.shared_context_files.join(', ')}]`
+      }]
+    };
   } else {
     throw new Error(`Unknown tool: ${request.params.name}`);
   }

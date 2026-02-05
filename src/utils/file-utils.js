@@ -1,6 +1,59 @@
 import fs from 'fs/promises';
 import path from 'path';
 
+// Expand context paths - directories become all files within them (recursively)
+export async function expandContextPaths(paths) {
+  if (!paths || paths.length === 0) return [];
+
+  const expanded = [];
+
+  for (const inputPath of paths) {
+    // Resolve path (handle ~, relative, absolute)
+    let absolutePath = inputPath;
+    if (path.isAbsolute(inputPath)) {
+      absolutePath = inputPath;
+    } else if (inputPath.startsWith('~')) {
+      absolutePath = inputPath.replace('~', process.env.HOME);
+    } else {
+      absolutePath = path.join(process.cwd(), inputPath);
+    }
+
+    try {
+      const stat = await fs.stat(absolutePath);
+      if (stat.isDirectory()) {
+        // Recursively get all files in directory
+        const files = await getFilesRecursively(absolutePath);
+        expanded.push(...files);
+      } else {
+        expanded.push(absolutePath);
+      }
+    } catch {
+      // Path doesn't exist - include it anyway, readFileContent will handle the error
+      expanded.push(absolutePath);
+    }
+  }
+
+  return expanded;
+}
+
+// Recursively get all files in a directory
+async function getFilesRecursively(dirPath) {
+  const files = [];
+  const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      const subFiles = await getFilesRecursively(fullPath);
+      files.push(...subFiles);
+    } else {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
 // Read file content safely
 export async function readFileContent(filePath) {
   try {
